@@ -98,3 +98,4 @@ defmodule PBFT do
   received_votes: nil
   }
   end
+end
