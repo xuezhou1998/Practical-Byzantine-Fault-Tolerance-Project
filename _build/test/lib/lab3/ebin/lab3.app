@@ -1,0 +1,11 @@
+{application,lab3,
+             [{applications,[kernel,stdlib,elixir,logger,emulation,
+                             statistics]},
+              {description,"lab3"},
+              {modules,['Elixir.Raft','Elixir.Raft.AppendEntryRequest',
+                        'Elixir.Raft.AppendEntryResponse',
+                        'Elixir.Raft.Client','Elixir.Raft.LogEntry',
+                        'Elixir.Raft.RequestVote',
+                        'Elixir.Raft.RequestVoteResponse']},
+              {registered,[]},
+              {vsn,"0.1.0"}]}.
