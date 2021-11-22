@@ -1,0 +1,12 @@
+{application,PBFT,
+             [{applications,[kernel,stdlib,elixir,logger,emulation,
+                             statistics]},
+              {description,"PBFT"},
+              {modules,['Elixir.PBFT','Elixir.Raft',
+                        'Elixir.Raft.AppendEntryRequest',
+                        'Elixir.Raft.AppendEntryResponse',
+                        'Elixir.Raft.Client','Elixir.Raft.LogEntry',
+                        'Elixir.Raft.RequestVote',
+                        'Elixir.Raft.RequestVoteResponse']},
+              {registered,[]},
+              {vsn,"0.1.0"}]}.
