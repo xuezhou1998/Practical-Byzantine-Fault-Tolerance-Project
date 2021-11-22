@@ -28,7 +28,8 @@ defmodule Raft.MixProject do
       {:emulation, in_umbrella: true},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:statistics, "~> 0.6.2"}
+      {:statistics, "~> 0.6.2"},
+      {:cloak, "1.1.1"}
     ]
   end
 end
