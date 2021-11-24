@@ -8,7 +8,7 @@ defmodule PBFT do
 
   import Kernel,
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
-
+    use Cloak.Vault, otp_app: :my_app
   require Fuzzers
   # This allows you to use Elixir's loggers
   # for messages. See
@@ -67,7 +67,11 @@ defmodule PBFT do
     sequence_set: nil,
     sequence_upper_bound: nil,
     sequence_lower_bound: nil,
-    account_book: nil
+    account_book: nil,
+
+    public_keys_list: nil,
+    my_private_key: nil,
+    my_public_key: nil
   )
   @spec new_configuration(
     [atom()],
@@ -76,7 +80,10 @@ defmodule PBFT do
     non_neg_integer(),
     non_neg_integer(),
     non_neg_integer(),
-    non_neg_integer()
+    non_neg_integer(),
+    [any()],
+    any(),
+    any()
   ) :: %PBFT{}
   def new_configuration(
     view,
@@ -85,7 +92,10 @@ defmodule PBFT do
     max_election_timeout,
     heartbeat_timeout,
     sequence_upper_bound,
-    sequence_lower_bound
+    sequence_lower_bound,
+    public_keys_list,
+    my_private_key,
+    my_public_key
   ) do
   %PBFT{
   view: view,
@@ -106,12 +116,20 @@ defmodule PBFT do
   # below are added attributes
   received_votes: nil,
   sequence_set: MapSet.new(),
-    sequence_upper_bound: nil,
-    sequence_lower_bound: nil,
-    account_book: MapSet.new()
+    sequence_upper_bound: sequence_upper_bound,
+    sequence_lower_bound: sequence_lower_bound,
+    account_book: MapSet.new(),
+
+    public_keys_list: Map.new(),
+    my_private_key: my_private_key,
+    my_public_key: my_public_key
   }
   end
+  @spec initialize_digital_signatures(%PBFT{}) :: no_return()
+  def initialize_digital_signatures(state) do
 
+    broadcast_to_others(state,state.my_public_key)
+  end
 
   @spec generate_unique_sequence(%PBFT{is_primary: true}, any()) :: integer()
   def generate_unique_sequence(state, extra_state) do
@@ -133,6 +151,7 @@ defmodule PBFT do
   def pre_prepare(state,digest_of_message,view,sequence_number,signature) do
     msg=PBFT.PrePrepareMessage.new(digest_of_message,view,sequence_number,signature)
     hear_back=broadcast_to_others(state, msg)
+    {_,encrpted_msg}=MyApp.Vault.encrypt("plaintext")
     hear_back
   end
 

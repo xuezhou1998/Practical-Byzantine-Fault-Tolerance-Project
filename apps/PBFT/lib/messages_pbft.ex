@@ -62,9 +62,42 @@ defmodule PBFT.LogEntry do
         argument: item
       }
     end
-
-
   end
+
+  defmodule PBFT.InitializeDigitalSignatureMessage do
+    @moduledoc """
+    AppendEntries RPC request.
+    """
+    alias __MODULE__
+
+    # Require that any AppendEntryRequest contains
+    # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
+    @enforce_keys [
+
+    ]
+    defstruct(
+
+    )
+
+    @doc """
+    Create a new AppendEntryRequest
+    """
+
+    @spec new(
+      any()
+          ) ::
+            %InitializeDigitalSignatureMessage{
+              my_public_key: any()
+            }
+    def new(
+      my_public_key
+        ) do
+      %InitializeDigitalSignatureMessage{
+        my_public_key: my_public_key
+      }
+    end
+  end
+
   defmodule PBFT.NewAccountMessage do
     @moduledoc """
     AppendEntries RPC request.
@@ -96,23 +129,23 @@ defmodule PBFT.LogEntry do
       non_neg_integer(),
       any()
           ) ::
-            %PrePrepareMessage{
+            %NewAccountMessage{
               DigestOfMessage: any(),
       View: [atom()],
       UniqueSequenceNumber: non_neg_integer(),
       Signature: any()
             }
     def new(
-      DigestOfMessage,
-      View,
-      UniqueSequenceNumber,
-      Signature
+      digestOfMessage,
+      view,
+      uniqueSequenceNumber,
+      signature
         ) do
-      %PrePrepareMessage{
-        DigestOfMessage: DigestOfMessage,
-      View: View,
-      UniqueSequenceNumber: UniqueSequenceNumber,
-      Signature: Signature
+      %NewAccountMessage{
+        DigestOfMessage: digestOfMessage,
+      View: view,
+      UniqueSequenceNumber: uniqueSequenceNumber,
+      Signature: signature
       }
     end
   end
@@ -148,23 +181,23 @@ defmodule PBFT.LogEntry do
       non_neg_integer(),
       any()
           ) ::
-            %PrePrepareMessage{
+            %UpdataBalanceMessage{
               DigestOfMessage: any(),
       View: [atom()],
       UniqueSequenceNumber: non_neg_integer(),
       Signature: any()
             }
     def new(
-      DigestOfMessage,
-      View,
-      UniqueSequenceNumber,
-      Signature
+      digestOfMessage,
+      view,
+      uniqueSequenceNumber,
+      signature
         ) do
-      %PrePrepareMessage{
-        DigestOfMessage: DigestOfMessage,
-      View: View,
-      UniqueSequenceNumber: UniqueSequenceNumber,
-      Signature: Signature
+      %UpdataBalanceMessage{
+        DigestOfMessage: digestOfMessage,
+      View: view,
+      UniqueSequenceNumber: uniqueSequenceNumber,
+      Signature: signature
       }
     end
   end
@@ -207,19 +240,19 @@ defmodule PBFT.LogEntry do
       UniqueSequenceNumber: non_neg_integer(),
       Signature: any()
             }
-    def new(
-      DigestOfMessage,
-      View,
-      UniqueSequenceNumber,
-      Signature
-        ) do
-      %PrePrepareMessage{
-        DigestOfMessage: DigestOfMessage,
-      View: View,
-      UniqueSequenceNumber: UniqueSequenceNumber,
-      Signature: Signature
-      }
-    end
+            def new(
+              digestOfMessage,
+              view,
+              uniqueSequenceNumber,
+              signature
+                ) do
+              %PrePrepareMessage{
+                DigestOfMessage: digestOfMessage,
+              View: view,
+              UniqueSequenceNumber: uniqueSequenceNumber,
+              Signature: signature
+              }
+            end
   end
 
     defmodule PBFT.PrepareMessage do
@@ -259,19 +292,19 @@ defmodule PBFT.LogEntry do
         UniqueSequenceNumber: non_neg_integer(),
         Signature: any()
               }
-      def new(
-        DigestOfMessage,
-        View,
-        UniqueSequenceNumber,
-        Signature
-          ) do
-        %PrepareMessage{
-          DigestOfMessage: DigestOfMessage,
-        View: View,
-        UniqueSequenceNumber: UniqueSequenceNumber,
-        Signature: Signature
-        }
-      end
+              def new(
+                digestOfMessage,
+                view,
+                uniqueSequenceNumber,
+                signature
+                  ) do
+                %PrepareMessage{
+                  DigestOfMessage: digestOfMessage,
+                View: view,
+                UniqueSequenceNumber: uniqueSequenceNumber,
+                Signature: signature
+                }
+              end
 end
 defmodule PBFT.CommitMessage do
   @moduledoc """
@@ -310,19 +343,19 @@ defmodule PBFT.CommitMessage do
     UniqueSequenceNumber: non_neg_integer(),
     Signature: any()
           }
-  def new(
-    DigestOfMessage,
-    View,
-    UniqueSequenceNumber,
-    Signature
-      ) do
-    %CommitMessage{
-      DigestOfMessage: DigestOfMessage,
-    View: View,
-    UniqueSequenceNumber: UniqueSequenceNumber,
-    Signature: Signature
-    }
-  end
+          def new(
+            digestOfMessage,
+            view,
+            uniqueSequenceNumber,
+            signature
+              ) do
+            %CommitMessage{
+              DigestOfMessage: digestOfMessage,
+            View: view,
+            UniqueSequenceNumber: uniqueSequenceNumber,
+            Signature: signature
+            }
+          end
 end
 
 defmodule PBFT.ReplyMessage do
@@ -362,17 +395,17 @@ defmodule PBFT.ReplyMessage do
     UniqueSequenceNumber: non_neg_integer(),
     Signature: any()
           }
-  def new(
-    DigestOfMessage,
-    View,
-    UniqueSequenceNumber,
-    Signature
-      ) do
-    %ReplyMessage{
-      DigestOfMessage: DigestOfMessage,
-    View: View,
-    UniqueSequenceNumber: UniqueSequenceNumber,
-    Signature: Signature
-    }
-  end
+          def new(
+            digestOfMessage,
+            view,
+            uniqueSequenceNumber,
+            signature
+              ) do
+            %ReplyMessage{
+              DigestOfMessage: digestOfMessage,
+            View: view,
+            UniqueSequenceNumber: uniqueSequenceNumber,
+            Signature: signature
+            }
+          end
 end
