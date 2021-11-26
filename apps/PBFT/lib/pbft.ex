@@ -1,66 +1,32 @@
 defmodule PBFT do
-  @moduledoc """
-  An implementation of the PBFT consensus protocol.
-  """
-  # Shouldn't need to spawn anything from this module, but if you do
-  # you should add spawn to the imports.
+  
   import Emulation, only: [send: 2, timer: 1, now: 0, whoami: 0]
 
   import Kernel,
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
     use Cloak.Vault, otp_app: :my_app
   require Fuzzers
-  # This allows you to use Elixir's loggers
-  # for messages. See
-  # https://timber.io/blog/the-ultimate-guide-to-logging-in-elixir/
-  # if you are interested in this. Note we currently purge all logs
-  # below Info
+  
   require Logger
 
-  # This structure contains all the process state
-  # required by the PBFT protocol.
+  
   defstruct(
-    # The list of current proceses.
+
     view: nil,
-    # Current primary.
+
     current_primary: nil,
-    # Time before starting an election.
-    min_election_timeout: nil,
-    max_election_timeout: nil,
-    election_timer: nil,
-    # Time between heartbeats from the primary.
+
     heartbeat_timeout: nil,
     heartbeat_timer: nil,
-    # Persistent state on all servers.
-    current_term: nil,
-    voted_for: nil,
-    # A short note on log structure: The functions that follow
-    # (e.g., get_last_log_index, commit_log_index, etc.) all
-    # assume that the log is a list with later entries (i.e.,
-    # entries with higher index numbers) appearing closer to
-    # the head of the list, and that index numbers start with 1.
-    # For example if the log contains 3 entries committe in term
-    # 2, 2, and 1 we would expect:
-    #
-    # `[{index: 3, term: 2, ..}, {index: 2, term: 2, ..},
-    #     {index: 1, term: 1}]`
-    #
-    # If you change this structure, you will need to change
-    # those functions.
-    #
-    # Finally, it might help to know that two lists can be
-    # concatenated using `l1 ++ l2`
+
     log: nil,
-    # Volatile state on all servers
-    commit_index: nil,
-    last_applied: nil,
-    # Volatile state on primary
+    
+    is_traitor: nil,
     is_primary: nil,
     next_index: nil,
     match_index: nil,
-    # The queue we are building using this RSM.
-    queue: nil,
-    received_votes: nil,
+
+    database: nil,
 
 
     # below are added attributes
@@ -88,8 +54,6 @@ defmodule PBFT do
   def new_configuration(
     view,
     primary,
-    min_election_timeout,
-    max_election_timeout,
     heartbeat_timeout,
     sequence_upper_bound,
     sequence_lower_bound,
@@ -100,21 +64,14 @@ defmodule PBFT do
   %PBFT{
   view: view,
   current_primary: primary,
-  min_election_timeout: min_election_timeout,
-  max_election_timeout: max_election_timeout,
   heartbeat_timeout: heartbeat_timeout,
-  # Start from term 1
-  current_term: 1,
-  voted_for: nil,
   log: [],
   commit_index: 0,
   last_applied: 0,
   is_primary: false,
   next_index: nil,
   match_index: nil,
-  queue: :queue.new(),
-  # below are added attributes
-  received_votes: nil,
+  database: %{}, # WDT: creation of a empty map, database[username] = amount of money, replace the queue in raft.
   sequence_set: MapSet.new(),
     sequence_upper_bound: sequence_upper_bound,
     sequence_lower_bound: sequence_lower_bound,
@@ -125,6 +82,7 @@ defmodule PBFT do
     my_public_key: my_public_key
   }
   end
+
   @spec initialize_digital_signatures(%PBFT{}) :: no_return()
   def initialize_digital_signatures(state) do
 
@@ -135,6 +93,7 @@ defmodule PBFT do
   def generate_unique_sequence(state, extra_state) do
     0
   end
+
   @spec broadcast_to_others(%PBFT{}, any()) :: [boolean()]
   defp broadcast_to_others(state, message) do
     me = whoami()
@@ -143,10 +102,12 @@ defmodule PBFT do
     |> Enum.filter(fn pid -> pid != me end)
     |> Enum.map(fn pid -> send(pid, message) end)
   end
+
   @spec validation(%PBFT{is_primary: true},any(),[atom()],non_neg_integer(),any() ) :: boolean()
   def validation(state,digest_of_message,view,sequence_number,signature) do
     true
   end
+
   @spec pre_prepare(%PBFT{is_primary: true},any(),[atom()],non_neg_integer(),any())::boolean()
   def pre_prepare(state,digest_of_message,view,sequence_number,signature) do
     msg=PBFT.PrePrepareMessage.new(digest_of_message,view,sequence_number,signature)
@@ -154,6 +115,7 @@ defmodule PBFT do
     {_,encrpted_msg}=MyApp.Vault.encrypt("plaintext")
     hear_back
   end
+
 
 
   @spec primary(%PBFT{is_primary: true}, any()) :: no_return()
@@ -254,6 +216,40 @@ defmodule PBFT do
 
   @spec replica(%PBFT{is_primary: false}, any()) :: no_return()
   def replica(state, extra_state) do
+    #TODO: add timer and view_changing logic
+    receive do
+      {sender, %PBFT.PrePrepareMessage{}} -> #TODO
+        #check signature
+        #check it is in v and d is correct for m
+        #check other{v, n}doesn't exist
+        #add to pre_prepare log
+        #create prepare message
+        #add to prepare log
+        #multicast prepare message
+
+      {sender, %PBFT.PrepareMessage{}} -> #TODO
+        #check signature
+        #check previous log
+        #check PBFT logic
+        #multicast commit message
+
+
+      {sender, %PBFT.CommitMessage{}} -> #TODO
+        #check signature
+        #check previous log
+        #check PBFT logic
+        #commit
+        #send reply
+
+
+      {sender, %PBFT.UpdataBalanceMessage{}} ->
+        send(sender, {:redirect, state.current_leader})
+        replica(state, extra_state)
+
+      {sender, %PBFT.NewAccountMessage{}} ->
+        send(sender, {:redirect, state.current_leader})
+        replica(state, extra_state)
+    end
 
   end
 
