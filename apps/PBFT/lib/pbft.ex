@@ -121,52 +121,19 @@ defmodule PBFT do
   @spec primary(%PBFT{is_primary: true}, any()) :: no_return()
   def primary(state, extra_state) do
     receive do
-      {}
+      {sender, %PBFT.RequestMessage{
+        Client: client,
+      TimeStamp: timeStamp,
+      Operation: operation,
+                DigestOfMessage: digestOfMessage,
+              View: view,
+              UniqueSequenceNumber: uniqueSequenceNumber,
+              Signature: signature
+      }}->
 
-      {:heartbeat_timer, _}->
-        prev_log_idx= get_last_log_index(state)
-        prev_log_tm= get_last_log_term(state)
-        msg=PBFT.AppendEntryRequest.new(
-          state.current_term,
-          state.current_primary,
-          prev_log_idx,
-          prev_log_tm,
-          nil,
-          state.commit_index)
-        s1=reset_heartbeat_timer(state)
-        IO.puts("primary timer ")
-        broadcast_to_others(s1,msg)
-        primary(s1,extra_state)
-
-      # Messages from external clients. For all of what follows
-      # you should send the `sender` an :ok (see `PBFT.Client`
-      # below) only after the request has completed, i.e., after
-      # the log entry corresponding to the request has been **committed**.
-      {sender, :update_balance} ->
-        # TODO: entry is the log entry that you need to
-        entry =
-          PBFT.LogEntry.update_balance(
-            get_last_log_index(state) + 1,
-            state.current_term,
-            sender
-          )
-
-        primary(s1, extra_state)
-
-      {sender, {:new_account, item}} ->
-        # TODO: entry is the log entry that you need to
-        entry =
-          PBFT.LogEntry.new_account(
-            get_last_log_index(state) + 1,
-            state.current_term,
-            sender,
-            item
-          )
         uniq_seq=generate_unique_sequence(state,extra_state)
-
         broadcast_to_others(state,uniq_seq)
         # TODO: You might need to update the following call.
-
         primary(s1, extra_state)
 
 
