@@ -19,7 +19,8 @@ defmodule PBFT do
     heartbeat_timeout: nil,
     heartbeat_timer: nil,
 
-    log: nil,
+    pre_prepare_log: nil,
+    prepare_log: nil,
     
     is_traitor: nil,
     is_primary: nil,
@@ -253,4 +254,48 @@ defmodule PBFT do
 
   end
 
+end
+
+defmodule PBFT.Client do
+  import Emulation, only: [send: 2]
+
+  import Kernel,
+    except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
+
+  alias __MODULE__
+  @enforce_keys [:leader]
+  defstruct(leader: nil)
+
+  @spec new_client(atom()) :: %Client{leader: atom()}
+  def new_client(member) do
+    %Client{leader: member}
+  end
+
+  @spec newaccount(%Client{}, %PBFT.NewAccountMessage{}) :: {:ok, %Client{}}
+  def newaccount(client, item) do
+    leader = client.leader
+    send(leader, item)
+
+    receive do
+      {_, :ok} ->
+        {:ok, client}
+
+      {_, {:redirect, new_leader}} ->
+        newaccount(%{client | leader: new_leader}, item)
+    end
+  end
+
+  @spec updatebalance(%Client{}, %PBFT.UpdataBalanceMessage{}) :: {:ok, %Client{}}
+  def updatebalance(client, item) do
+    leader = client.leader
+    send(leader, item)
+
+    receive do
+      {_, :ok} ->
+        {:ok, client}
+
+      {_, {:redirect, new_leader}} ->
+        newaccount(%{client | leader: new_leader}, item)
+    end
+  end
 end

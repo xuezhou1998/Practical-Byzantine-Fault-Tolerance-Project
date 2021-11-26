@@ -19,3 +19,5 @@ Note: There is no election, so everything about election in Raft is useless. Ins
 replica becomes primary.
 
 I think the "sequence number" is just an integer.
+
+I strongly suggest we delete the "create account" function before the system somehow works.
