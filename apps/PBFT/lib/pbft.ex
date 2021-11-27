@@ -1,21 +1,13 @@
 defmodule PBFT do
-  
   import Emulation, only: [send: 2, timer: 1, now: 0, whoami: 0]
-
   import Kernel,
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
     use Cloak.Vault, otp_app: :my_app
   require Fuzzers
-  
   require Logger
-
-  
   defstruct(
-
     view: nil,
-
     current_primary: nil,
-
     heartbeat_timeout: nil,
     heartbeat_timer: nil,
 
@@ -26,16 +18,11 @@ defmodule PBFT do
     is_primary: nil,
     next_index: nil,
     match_index: nil,
-
     database: nil,
-
-
-    # below are added attributes
     sequence_set: nil,
     sequence_upper_bound: nil,
     sequence_lower_bound: nil,
     account_book: nil,
-
     public_keys_list: nil,
     my_private_key: nil,
     my_public_key: nil
@@ -77,7 +64,6 @@ defmodule PBFT do
     sequence_upper_bound: sequence_upper_bound,
     sequence_lower_bound: sequence_lower_bound,
     account_book: MapSet.new(),
-
     public_keys_list: Map.new(),
     my_private_key: my_private_key,
     my_public_key: my_public_key
@@ -117,101 +103,29 @@ defmodule PBFT do
     hear_back
   end
 
-
-
   @spec primary(%PBFT{is_primary: true}, any()) :: no_return()
   def primary(state, extra_state) do
     receive do
-      {}
+      {sender, %PBFT.RequestMessage{
+        Client: client,
+        TimeStamp: timeStamp,
+        Operation: operation,
+        Message: message,
+        DigestOfMessage: digestOfMessage,
+        View: view,
+        UniqueSequenceNumber: uniqueSequenceNumber,
+        Signature: signature
+        }
+      }->
+        validation_result=validation(state,digestOfMessage,view,uniqueSequenceNumber,signature)
+        if validation_result==true do
+          uniq_seq=generate_unique_sequence(state,extra_state)
+          pre_prepare_message=PBFT.PrePrepareMessage.new()
+          broadcast_to_others(state,pre_prepare_message)
+        end
 
-      {:heartbeat_timer, _}->
-        prev_log_idx= get_last_log_index(state)
-        prev_log_tm= get_last_log_term(state)
-        msg=PBFT.AppendEntryRequest.new(
-          state.current_term,
-          state.current_primary,
-          prev_log_idx,
-          prev_log_tm,
-          nil,
-          state.commit_index)
-        s1=reset_heartbeat_timer(state)
-        IO.puts("primary timer ")
-        broadcast_to_others(s1,msg)
-        primary(s1,extra_state)
-
-      # Messages from external clients. For all of what follows
-      # you should send the `sender` an :ok (see `PBFT.Client`
-      # below) only after the request has completed, i.e., after
-      # the log entry corresponding to the request has been **committed**.
-      {sender, :update_balance} ->
-        # TODO: entry is the log entry that you need to
-        entry =
-          PBFT.LogEntry.update_balance(
-            get_last_log_index(state) + 1,
-            state.current_term,
-            sender
-          )
-
-        primary(s1, extra_state)
-
-      {sender, {:new_account, item}} ->
-        # TODO: entry is the log entry that you need to
-        entry =
-          PBFT.LogEntry.new_account(
-            get_last_log_index(state) + 1,
-            state.current_term,
-            sender,
-            item
-          )
-        uniq_seq=generate_unique_sequence(state,extra_state)
-
-        broadcast_to_others(state,uniq_seq)
         # TODO: You might need to update the following call.
-
         primary(s1, extra_state)
-
-
-
-      # Messages for debugging [Do not modify existing ones,
-      # but feel free to add new ones.]
-      {sender, :send_state} ->
-        # IO.puts("in 1")
-        send(sender, state.queue)
-        primary(state, extra_state)
-
-      {sender, :send_log} ->
-        # IO.puts("in 2")
-        send(sender, state.log)
-        primary(state, extra_state)
-      {sender,:send_log_length}->
-        send(sender,length(state.log))
-        primary(state, extra_state)
-
-      {sender, :whois_primary} ->
-        # IO.puts("in 3")
-        send(sender, {whoami(), state.current_term})
-        primary(state, extra_state)
-
-      {sender, :current_process_type} ->
-        # IO.puts("in 4")
-        send(sender, :primary)
-        primary(state, extra_state)
-
-      {sender, {:set_election_timeout, min, max}} ->
-        # IO.puts("in 5")
-        send(sender, :ok)
-
-        primary(
-          %{state | min_election_timeout: min, max_election_timeout: max},
-          extra_state
-        )
-
-      {sender, {:set_heartbeat_timeout, timeout}} ->
-        # IO.puts("in 6")
-        state = %{state | heartbeat_timeout: timeout}
-        state = reset_heartbeat_timer(state)
-        send(sender, :ok)
-        primary(state, extra_state)
     end
   end
 
@@ -227,22 +141,17 @@ defmodule PBFT do
         #create prepare message
         #add to prepare log
         #multicast prepare message
-
       {sender, %PBFT.PrepareMessage{}} -> #TODO
         #check signature
         #check previous log
         #check PBFT logic
         #multicast commit message
-
-
       {sender, %PBFT.CommitMessage{}} -> #TODO
         #check signature
         #check previous log
         #check PBFT logic
         #commit
         #send reply
-
-
       {sender, %PBFT.UpdataBalanceMessage{}} ->
         send(sender, {:redirect, state.current_leader})
         replica(state, extra_state)
