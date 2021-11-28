@@ -13,7 +13,7 @@ defmodule PBFT do
 
     pre_prepare_log: nil,
     prepare_log: nil,
-    
+
     is_traitor: nil,
     is_primary: nil,
     next_index: nil,
@@ -106,7 +106,7 @@ defmodule PBFT do
   @spec primary(%PBFT{is_primary: true}, any()) :: no_return()
   def primary(state, extra_state) do
     receive do
-      {sender, %PBFT.RequestMessage{
+      {sender, %PBFT.UpdataBalanceMessage{
         Client: client,
         TimeStamp: timeStamp,
         Operation: operation,
@@ -123,6 +123,24 @@ defmodule PBFT do
           pre_prepare_message=PBFT.PrePrepareMessage.new()
           broadcast_to_others(state,pre_prepare_message)
         end
+        {sender, %PBFT.NewAccountMessage{
+          Client: client,
+          TimeStamp: timeStamp,
+          Operation: operation,
+          Message: message,
+          DigestOfMessage: digestOfMessage,
+          View: view,
+          UniqueSequenceNumber: uniqueSequenceNumber,
+          Signature: signature
+          }
+        }->
+          validation_result=validation(state,digestOfMessage,view,uniqueSequenceNumber,signature)
+          if validation_result==true do
+            uniq_seq=generate_unique_sequence(state,extra_state)
+            pre_prepare_message=PBFT.PrePrepareMessage.new()
+            broadcast_to_others(state,pre_prepare_message)
+          end
+
 
         # TODO: You might need to update the following call.
         primary(s1, extra_state)
