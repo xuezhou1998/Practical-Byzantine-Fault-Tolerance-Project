@@ -73,10 +73,10 @@ defmodule PBFT.LogEntry do
     # Require that any AppendEntryRequest contains
     # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
     @enforce_keys [
-
+      :my_public_key
     ]
     defstruct(
-
+      my_public_key: nil
     )
 
     @doc """
@@ -136,12 +136,13 @@ defmodule PBFT.LogEntry do
       non_neg_integer(),
       atom(),
       any(),
+      any(),
       [atom()],
       non_neg_integer(),
       any()
           ) ::
             %RequestMessage{
-              lient: atom(),
+              Client: atom(),
       TimeStamp: non_neg_integer(),
       Operation: atom(),
       Message: any(),
@@ -212,12 +213,13 @@ defmodule PBFT.LogEntry do
       non_neg_integer(),
       atom(),
       any(),
+      any(),
       [atom()],
       non_neg_integer(),
       any()
           ) ::
             %PrePrepareMessage{
-              lient: atom(),
+              Client: atom(),
       TimeStamp: non_neg_integer(),
       Operation: atom(),
       Message: any(),
@@ -287,12 +289,13 @@ defmodule PBFT.LogEntry do
       non_neg_integer(),
       atom(),
       any(),
+      any(),
       [atom()],
       non_neg_integer(),
       any()
           ) ::
             %PrepareMessage{
-              lient: atom(),
+              Client: atom(),
       TimeStamp: non_neg_integer(),
       Operation: atom(),
       Message: any(),
@@ -360,13 +363,13 @@ defmodule PBFT.LogEntry do
         atom(),
         non_neg_integer(),
         atom(),
-        any(),
+        any(),any(),
         [atom()],
         non_neg_integer(),
         any()
             ) ::
               %CommitMessage{
-                lient: atom(),
+                Client: atom(),
         TimeStamp: non_neg_integer(),
         Operation: atom(),
         Message: any(),
@@ -435,13 +438,13 @@ defmodule PBFT.LogEntry do
         atom(),
         non_neg_integer(),
         atom(),
-        any(),
+        any(),any(),
         [atom()],
         non_neg_integer(),
         any()
             ) ::
               %ReplyMessage{
-                lient: atom(),
+                Client: atom(),
         TimeStamp: non_neg_integer(),
         Operation: atom(),
         Message: any(),
