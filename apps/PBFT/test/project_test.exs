@@ -6,6 +6,7 @@ defmodule ProjectTest do
   defp print_a do
     PBFT.new_configuration([:a, :b, :c, :d], :a, 100, 1000, 20, [], 100, 1000)
     IO.puts("this is a project test function")
+    PBFT.test_function()
   end
 
 

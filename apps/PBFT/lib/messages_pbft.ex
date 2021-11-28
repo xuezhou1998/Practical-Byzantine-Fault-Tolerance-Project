@@ -1,71 +1,85 @@
 defmodule PBFT.LogEntry do
 
-  alias __MODULE__
-  @enforce_keys [:index, :term]
-  defstruct(
-    index: nil,
-    term: nil,
-    operation: nil,
-    requester: nil,
-    argument: nil
-  )
+    @moduledoc """
+    AppendEntries RPC request.
+    """
+    alias __MODULE__
+
+    # Require that any AppendEntryRequest contains
+    # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
+    @enforce_keys [
+      :Client,
+      :TimeStamp,
+      :Operation,
+      :Message,
+      :DigestOfMessage,
+      :View,
+      :UniqueSequenceNumber,
+      :Signature
+    ]
+    defstruct(
+      Client: nil,
+      TimeStamp: nil,
+      Operation: nil,
+      Message: nil,
+      DigestOfMessage: nil,
+      View: nil,
+      UniqueSequenceNumber: nil,
+      Signature: nil
+    )
 
     @doc """
-    Return an empty log entry, this is mostly
-    used for convenience.
+    Create a new AppendEntryRequest
     """
-    @spec empty() :: %LogEntry{index: 0, term: 0}
-    def empty do
-      %LogEntry{index: 0, term: 0}
-    end
 
-    @doc """
-    Return a update_balance entry for the given index.
-    """
-    @spec update_balance(non_neg_integer(), non_neg_integer(), atom()) :: %LogEntry{
-            index: non_neg_integer(),
-            term: non_neg_integer(),
-            requester: atom() | pid(),
-            operation: :update_balance,
-            argument: none()
-          }
-    def update_balance(index, term, requester) do
+    @spec update_balance(
+      atom(),
+      non_neg_integer(),
+      atom(),
+      any(),
+      any(),
+      non_neg_integer(),
+      non_neg_integer(),
+      any()
+          ) ::
       %LogEntry{
-        index: index,
-        term: term,
-        requester: requester,
-        operation: :update_balance,
-        argument: nil
-      }
-    end
-
-    @doc """
-    Return a log entry for an `new_account` operation.
-    """
-    @spec new_account(non_neg_integer(), non_neg_integer(), atom(), any()) ::
-            %LogEntry{
-              index: non_neg_integer(),
-              term: non_neg_integer(),
-              requester: atom() | pid(),
-              operation: :enq,
-              argument: any()
+              Client: atom(),
+      TimeStamp: non_neg_integer(),
+      Operation: atom(),
+      Message: any(),
+              DigestOfMessage: any(),
+      View: non_neg_integer(),
+      UniqueSequenceNumber: non_neg_integer(),
+      Signature: any()
             }
-    def new_account(index, term, requester, item) do
-      %LogEntry{
-        index: index,
-        term: term,
-        requester: requester,
-        operation: :enq,
-        argument: item
-      }
-    end
+            def update_balance(
+              client,
+      timeStamp,
+      operation,
+            message,
+              digestOfMessage,
+              view,
+              uniqueSequenceNumber,
+              signature
+                ) do
+              %LogEntry{
+                Client: client,
+      TimeStamp: timeStamp,
+      Operation: operation,
+      Message: message,
+                DigestOfMessage: digestOfMessage,
+              View: view,
+              UniqueSequenceNumber: uniqueSequenceNumber,
+              Signature: signature
+              }
+            end
   end
 
   defmodule PBFT.InitializeDigitalSignatureMessage do
     alias __MODULE__
 
     @enforce_keys [
-
+      :my_public_key
     ]
     defstruct(
       my_public_key: nil
@@ -114,13 +128,18 @@ defmodule PBFT.LogEntry do
 
     @spec new(
       any(),
-      [atom()],
+      any(),
+      non_neg_integer(),
       non_neg_integer(),
       any()
           ) ::
-            %NewAccountMessage{
+            %RequestMessage{
+              Client: atom(),
+      TimeStamp: non_neg_integer(),
+      Operation: atom(),
+      Message: any(),
               DigestOfMessage: any(),
-      View: [atom()],
+      View: non_neg_integer(),
       UniqueSequenceNumber: non_neg_integer(),
       Signature: any()
             }
@@ -166,13 +185,18 @@ defmodule PBFT.LogEntry do
 
     @spec new(
       any(),
-      [atom()],
+      any(),
+      non_neg_integer(),
       non_neg_integer(),
       any()
           ) ::
-            %UpdataBalanceMessage{
+            %PrePrepareMessage{
+              Client: atom(),
+      TimeStamp: non_neg_integer(),
+      Operation: atom(),
+      Message: any(),
               DigestOfMessage: any(),
-      View: [atom()],
+      View: non_neg_integer(),
       UniqueSequenceNumber: non_neg_integer(),
       Signature: any()
             }
@@ -214,13 +238,18 @@ defmodule PBFT.LogEntry do
 
     @spec new(
       any(),
-      [atom()],
+      any(),
+      non_neg_integer(),
       non_neg_integer(),
       any()
           ) ::
-            %PrePrepareMessage{
+            %PrepareMessage{
+              Client: atom(),
+      TimeStamp: non_neg_integer(),
+      Operation: atom(),
+      Message: any(),
               DigestOfMessage: any(),
-      View: [atom()],
+      View: non_neg_integer(),
       UniqueSequenceNumber: non_neg_integer(),
       Signature: any()
             }
@@ -265,14 +294,21 @@ defmodule PBFT.LogEntry do
       """
 
       @spec new(
-        any(),
-        [atom()],
+        atom(),
+        non_neg_integer(),
+        atom(),
+        any(),any(),
+        non_neg_integer(),
         non_neg_integer(),
         any()
             ) ::
-              %PrepareMessage{
+              %CommitMessage{
+                Client: atom(),
+        TimeStamp: non_neg_integer(),
+        Operation: atom(),
+        Message: any(),
                 DigestOfMessage: any(),
-        View: [atom()],
+        View: non_neg_integer(),
         UniqueSequenceNumber: non_neg_integer(),
         Signature: any()
               }

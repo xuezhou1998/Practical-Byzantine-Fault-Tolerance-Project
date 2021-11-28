@@ -29,17 +29,14 @@ defmodule PBFT do
     commit_log: []
   )
   @spec new_configuration(
-    [atom()],
+    non_neg_integer(),
     atom(),
-    non_neg_integer(),
-    non_neg_integer(),
+
     non_neg_integer(),
     [any()],
     any(),
-    any(),
-    [any()],
-    [any()],
-    [any()]
+    any()
+
   ) :: %PBFT{}
   def new_configuration(
     view,
@@ -64,10 +61,7 @@ defmodule PBFT do
     account_book: MapSet.new(),
     public_keys_list: Map.new(),
     my_private_key: my_private_key,
-    my_public_key: my_public_key,
-    pre_prepare_log: [],
-    prepare_log: [],
-    commit_log: []
+    my_public_key: my_public_key
   }
   end
 
@@ -77,6 +71,10 @@ defmodule PBFT do
   #   broadcast_to_others(state,state.my_public_key)
   # end
 
+  @spec test_function()::no_return()
+  def test_function() do
+    IO.puts("test inside the PBFT.ex")
+  end
   @spec generate_unique_sequence(%PBFT{is_primary: true}, any()) :: integer()
   def generate_unique_sequence(state, extra_state) do
     0
@@ -171,11 +169,11 @@ defmodule PBFT do
     receive do
       {sender, %PBFT.RequestMessage{
         Client: client,
-        TimeStamp: _timeStamp,
+        TimeStamp: timeStamp,
         Operation: operation,
         Message: message,
         DigestOfMessage: digestOfMessage,
-        View: _view,
+        View: view,
         UniqueSequenceNumber: _UniqueSequenceNumber,
         Signature: client_signature
         }
@@ -184,8 +182,8 @@ defmodule PBFT do
         validation_result=validation(state,client_signature,extra_state)
         if validation_result==true do
           uniq_seq=generate_unique_sequence(state,extra_state)
-          primary_time_stamp=now()
-          primary_view=state.view
+          primary_time_stamp=timeStamp
+          primary_view=view
           primary_signature=authentication(state,extra_state)
 
           pre_prepare_message=PBFT.PrePrepareMessage.new(
@@ -198,7 +196,7 @@ defmodule PBFT do
           uniq_seq,
           primary_signature)
 
-          broadcast_to_others(state,pre_prepare_message)
+          broadcast_to_others(state,pre_prepare_message,extra_state)
         end
         # TODO: You might need to update the following call.
         primary(state, extra_state)
@@ -225,7 +223,7 @@ defmodule PBFT do
         Signature: signature
       }} -> #TODO
         #check signature
-        validation_result=validation(state,signature)
+        validation_result=validation(state,signature,extra_state)
         if validation_result==true do
           #check it is in v and d is correct for m
           #check other{v, n}doesn't exist
@@ -237,17 +235,30 @@ defmodule PBFT do
               check_n_result=check_n(state,uniqueSequenceNumber,extra_state)
               if check_n_result==true do
                 #add to pre_prepare log
-                state_1=add_to_log(state,:pre_prepare,new_entry,extra_state)
+                new_entry = PBFT.LogEntry.update_balance(client,timeStamp,operation,message,digestOfMessage,view,uniqueSequenceNumber,signature)
+
+                state_1 = add_to_log(state,:pre_prepare,new_entry,extra_state)
+
                 #create prepare message
-                prepare_msg=PBFT.
+                new_prepare_msg=PBFT.PrepareMessage.new(client, timeStamp, operation, message, digestOfMessage, view, uniqueSequenceNumber, signature)
                 #add to prepare log
+                state_2 = add_to_log(state_1, :prepare,new_entry,extra_state)
                 #multicast prepare message
+                _=broadcast_to_others(state_2,new_prepare_msg,extra_state)
+                replica(state_2,extra_state)
+              else
+                replica(state,extra_state)
               end
+            else
+              replica(state,extra_state)
             end
-
+          else
+            replica(state,extra_state)
           end
-
+        else
+          replica(state,extra_state)
         end
+
 
 
       {sender, %PBFT.PrepareMessage{
@@ -257,7 +268,7 @@ defmodule PBFT do
         #check previous log
         #check PBFT logic
         #multicast commit messag
-
+        raise "Not yet implemented"
 
       {sender, %PBFT.CommitMessage{}} -> #TODO
         #check signature
@@ -265,12 +276,12 @@ defmodule PBFT do
         #check PBFT logic
         #commit
         #send reply
-        nil
+        raise "Not yet implemented"
       {sender, %PBFT.RequestMessage{}} ->
         send(sender, {:redirect, state.current_leader})
         replica(state, extra_state)
 
-
+        raise "Not yet implemented"
     end
 
   end
