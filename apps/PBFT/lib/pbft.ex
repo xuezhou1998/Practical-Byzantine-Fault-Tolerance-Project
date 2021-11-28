@@ -29,7 +29,7 @@ defmodule PBFT do
     commit_log: []
   )
   @spec new_configuration(
-    [atom()],
+    non_neg_integer(),
     atom(),
 
     non_neg_integer(),
@@ -165,11 +165,11 @@ defmodule PBFT do
     receive do
       {sender, %PBFT.RequestMessage{
         Client: client,
-        TimeStamp: _timeStamp,
+        TimeStamp: timeStamp,
         Operation: operation,
         Message: message,
         DigestOfMessage: digestOfMessage,
-        View: _view,
+        View: view,
         UniqueSequenceNumber: _UniqueSequenceNumber,
         Signature: client_signature
         }
@@ -178,8 +178,8 @@ defmodule PBFT do
         validation_result=validation(state,client_signature,extra_state)
         if validation_result==true do
           uniq_seq=generate_unique_sequence(state,extra_state)
-          primary_time_stamp=now()
-          primary_view=state.view
+          primary_time_stamp=timeStamp
+          primary_view=view
           primary_signature=authentication(state,extra_state)
 
           pre_prepare_message=PBFT.PrePrepareMessage.new(
@@ -226,18 +226,30 @@ defmodule PBFT do
               check_n_result=check_n(state,uniqueSequenceNumber,extra_state)
               if check_n_result==true do
                 #add to pre_prepare log
-                new_entry=nil
-                state_1=add_to_log(state,:pre_prepare,new_entry,extra_state)
+                new_entry = PBFT.LogEntry.update_balance(client,timeStamp,operation,message,digestOfMessage,view,uniqueSequenceNumber,signature)
+
+                state_1 = add_to_log(state,:pre_prepare,new_entry,extra_state)
+
                 #create prepare message
-
+                new_prepare_msg=PBFT.PrepareMessage.new(client, timeStamp, operation, message, digestOfMessage, view, uniqueSequenceNumber, signature)
                 #add to prepare log
+                state_2 = add_to_log(state_1, :prepare,new_entry,extra_state)
                 #multicast prepare message
+                _=broadcast_to_others(state_2,new_prepare_msg,extra_state)
+                replica(state_2,extra_state)
+              else
+                replica(state,extra_state)
               end
+            else
+              replica(state,extra_state)
             end
-
+          else
+            replica(state,extra_state)
           end
-
+        else
+          replica(state,extra_state)
         end
+
 
 
       {sender, %PBFT.PrepareMessage{
