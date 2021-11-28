@@ -33,8 +33,6 @@ defmodule PBFT do
     non_neg_integer(),
     non_neg_integer(),
     non_neg_integer(),
-    non_neg_integer(),
-    non_neg_integer(),
     [any()],
     any(),
     any()
@@ -54,19 +52,17 @@ defmodule PBFT do
   current_primary: primary,
   heartbeat_timeout: heartbeat_timeout,
   log: [],
-  commit_index: 0,
-  last_applied: 0,
   is_primary: false,
   next_index: nil,
   match_index: nil,
   database: %{}, # WDT: creation of a empty map, database[username] = amount of money, replace the queue in raft.
   sequence_set: MapSet.new(),
-    sequence_upper_bound: sequence_upper_bound,
-    sequence_lower_bound: sequence_lower_bound,
-    account_book: MapSet.new(),
-    public_keys_list: Map.new(),
-    my_private_key: my_private_key,
-    my_public_key: my_public_key
+  sequence_upper_bound: sequence_upper_bound,
+  sequence_lower_bound: sequence_lower_bound,
+  account_book: MapSet.new(),
+  public_keys_list: Map.new(),
+  my_private_key: my_private_key,
+  my_public_key: my_public_key
   }
   end
 
@@ -147,6 +143,11 @@ defmodule PBFT do
   #   hear_back
   # end
 
+  @spec make_primary(%PBFT{}) :: no_return()
+  def make_primary(state) do
+    replica( %{state | is_primary: true}, nil)
+  end
+
   @spec primary(%PBFT{is_primary: true}, any()) :: no_return()
   def primary(state, extra_state) do
     receive do
@@ -183,6 +184,11 @@ defmodule PBFT do
         # TODO: You might need to update the following call.
         primary(s1, extra_state)
     end
+  end
+
+  @spec make_replica(%PBFT{}) :: no_return()
+  def make_replica(state) do
+    replica( %{state | is_primary: false}, nil)
   end
 
   @spec replica(%PBFT{is_primary: false}, any()) :: no_return()
