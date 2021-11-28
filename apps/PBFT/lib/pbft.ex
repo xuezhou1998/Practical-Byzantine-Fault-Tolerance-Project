@@ -84,7 +84,6 @@ defmodule PBFT do
   @spec broadcast_to_others(%PBFT{}, any()) :: [boolean()]
   defp broadcast_to_others(state, message) do
     me = whoami()
-
     state.view
     |> Enum.filter(fn pid -> pid != me end)
     |> Enum.map(fn pid -> send(pid, message) end)
@@ -106,40 +105,33 @@ defmodule PBFT do
   @spec primary(%PBFT{is_primary: true}, any()) :: no_return()
   def primary(state, extra_state) do
     receive do
-      {sender, %PBFT.UpdataBalanceMessage{
+      {sender, %PBFT.RequestMessage{
         Client: client,
         TimeStamp: timeStamp,
         Operation: operation,
         Message: message,
         DigestOfMessage: digestOfMessage,
         View: view,
-        UniqueSequenceNumber: uniqueSequenceNumber,
-        Signature: signature
+        UniqueSequenceNumber: _,
+        Signature: client_signature
         }
       }->
         validation_result=validation(state,digestOfMessage,view,uniqueSequenceNumber,signature)
         if validation_result==true do
           uniq_seq=generate_unique_sequence(state,extra_state)
-          pre_prepare_message=PBFT.PrePrepareMessage.new()
+
+          pre_prepare_message=PBFT.PrePrepareMessage.new(
+            client,
+          timeStamp,
+          operation,
+                message,
+                  digestOfMessage,
+                  view,
+                  uniqueSequenceNumber,
+                  signature)
           broadcast_to_others(state,pre_prepare_message)
         end
-        {sender, %PBFT.NewAccountMessage{
-          Client: client,
-          TimeStamp: timeStamp,
-          Operation: operation,
-          Message: message,
-          DigestOfMessage: digestOfMessage,
-          View: view,
-          UniqueSequenceNumber: uniqueSequenceNumber,
-          Signature: signature
-          }
-        }->
-          validation_result=validation(state,digestOfMessage,view,uniqueSequenceNumber,signature)
-          if validation_result==true do
-            uniq_seq=generate_unique_sequence(state,extra_state)
-            pre_prepare_message=PBFT.PrePrepareMessage.new()
-            broadcast_to_others(state,pre_prepare_message)
-          end
+
 
 
         # TODO: You might need to update the following call.
@@ -170,13 +162,11 @@ defmodule PBFT do
         #check PBFT logic
         #commit
         #send reply
-      {sender, %PBFT.UpdataBalanceMessage{}} ->
+      {sender, %PBFT.RequestMessage{}} ->
         send(sender, {:redirect, state.current_leader})
         replica(state, extra_state)
 
-      {sender, %PBFT.NewAccountMessage{}} ->
-        send(sender, {:redirect, state.current_leader})
-        replica(state, extra_state)
+
     end
 
   end
@@ -198,7 +188,7 @@ defmodule PBFT.Client do
     %Client{leader: member}
   end
 
-  @spec newaccount(%Client{}, %PBFT.NewAccountMessage{}) :: {:ok, %Client{}}
+  @spec newaccount(%Client{}, %PBFT.RequestMessage{}) :: {:ok, %Client{}}
   def newaccount(client, item) do
     leader = client.leader
     send(leader, item)
@@ -212,7 +202,7 @@ defmodule PBFT.Client do
     end
   end
 
-  @spec updatebalance(%Client{}, %PBFT.UpdataBalanceMessage{}) :: {:ok, %Client{}}
+  @spec updatebalance(%Client{}, %PBFT.RequestMessage{}) :: {:ok, %Client{}}
   def updatebalance(client, item) do
     leader = client.leader
     send(leader, item)

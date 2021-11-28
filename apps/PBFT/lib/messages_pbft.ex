@@ -98,7 +98,7 @@ defmodule PBFT.LogEntry do
     end
   end
 
-  defmodule PBFT.NewAccountMessage do
+  defmodule PBFT.RequestMessage do
     @moduledoc """
     AppendEntries RPC request.
     """
@@ -140,7 +140,7 @@ defmodule PBFT.LogEntry do
       non_neg_integer(),
       any()
           ) ::
-            %NewAccountMessage{
+            %RequestMessage{
               lient: atom(),
       TimeStamp: non_neg_integer(),
       Operation: atom(),
@@ -160,7 +160,7 @@ defmodule PBFT.LogEntry do
               uniqueSequenceNumber,
               signature
                 ) do
-              %NewAccountMessage{
+              %RequestMessage{
                 Client: client,
       TimeStamp: timeStamp,
       Operation: operation,
@@ -171,82 +171,7 @@ defmodule PBFT.LogEntry do
               Signature: signature
               }
             end
-  end
-
-  defmodule PBFT.UpdataBalanceMessage do
-    @moduledoc """
-    AppendEntries RPC request.
-    """
-    alias __MODULE__
-
-    # Require that any AppendEntryRequest contains
-    # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
-    @enforce_keys [
-      :Client,
-      :TimeStamp,
-      :Operation,
-      :Message,
-      :DigestOfMessage,
-      :View,
-      :UniqueSequenceNumber,
-      :Signature
-    ]
-    defstruct(
-      Client: nil,
-      TimeStamp: nil,
-      Operation: nil,
-      Message: nil,
-      DigestOfMessage: nil,
-      View: nil,
-      UniqueSequenceNumber: nil,
-      Signature: nil
-    )
-
-    @doc """
-    Create a new AppendEntryRequest
-    """
-
-    @spec new(
-      atom(),
-      non_neg_integer(),
-      atom(),
-      any(),
-      [atom()],
-      non_neg_integer(),
-      any()
-          ) ::
-            %UpdataBalanceMessage{
-              lient: atom(),
-      TimeStamp: non_neg_integer(),
-      Operation: atom(),
-      Message: any(),
-              DigestOfMessage: any(),
-      View: [atom()],
-      UniqueSequenceNumber: non_neg_integer(),
-      Signature: any()
-            }
-            def new(
-              client,
-      timeStamp,
-      operation,
-            message,
-              digestOfMessage,
-              view,
-              uniqueSequenceNumber,
-              signature
-                ) do
-              %UpdataBalanceMessage{
-                Client: client,
-      TimeStamp: timeStamp,
-      Operation: operation,
-      Message: message,
-                DigestOfMessage: digestOfMessage,
-              View: view,
-              UniqueSequenceNumber: uniqueSequenceNumber,
-              Signature: signature
-              }
-            end
-  end
+          end
 
 
   defmodule PBFT.PrePrepareMessage do
@@ -258,12 +183,20 @@ defmodule PBFT.LogEntry do
     # Require that any AppendEntryRequest contains
     # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
     @enforce_keys [
+      :Client,
+      :TimeStamp,
+      :Operation,
+      :Message,
       :DigestOfMessage,
       :View,
       :UniqueSequenceNumber,
       :Signature
     ]
     defstruct(
+      Client: nil,
+      TimeStamp: nil,
+      Operation: nil,
+      Message: nil,
       DigestOfMessage: nil,
       View: nil,
       UniqueSequenceNumber: nil,
@@ -275,24 +208,39 @@ defmodule PBFT.LogEntry do
     """
 
     @spec new(
+      atom(),
+      non_neg_integer(),
+      atom(),
       any(),
       [atom()],
       non_neg_integer(),
       any()
           ) ::
             %PrePrepareMessage{
+              lient: atom(),
+      TimeStamp: non_neg_integer(),
+      Operation: atom(),
+      Message: any(),
               DigestOfMessage: any(),
       View: [atom()],
       UniqueSequenceNumber: non_neg_integer(),
       Signature: any()
             }
             def new(
+              client,
+      timeStamp,
+      operation,
+            message,
               digestOfMessage,
               view,
               uniqueSequenceNumber,
               signature
                 ) do
               %PrePrepareMessage{
+                Client: client,
+      TimeStamp: timeStamp,
+      Operation: operation,
+      Message: message,
                 DigestOfMessage: digestOfMessage,
               View: view,
               UniqueSequenceNumber: uniqueSequenceNumber,
@@ -301,8 +249,82 @@ defmodule PBFT.LogEntry do
             end
   end
 
-    defmodule PBFT.PrepareMessage do
+  defmodule PBFT.PrepareMessage do
       @moduledoc """
+    AppendEntries RPC request.
+    """
+    alias __MODULE__
+
+    # Require that any AppendEntryRequest contains
+    # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
+    @enforce_keys [
+      :Client,
+      :TimeStamp,
+      :Operation,
+      :Message,
+      :DigestOfMessage,
+      :View,
+      :UniqueSequenceNumber,
+      :Signature
+    ]
+    defstruct(
+      Client: nil,
+      TimeStamp: nil,
+      Operation: nil,
+      Message: nil,
+      DigestOfMessage: nil,
+      View: nil,
+      UniqueSequenceNumber: nil,
+      Signature: nil
+    )
+
+    @doc """
+    Create a new AppendEntryRequest
+    """
+
+    @spec new(
+      atom(),
+      non_neg_integer(),
+      atom(),
+      any(),
+      [atom()],
+      non_neg_integer(),
+      any()
+          ) ::
+            %PrepareMessage{
+              lient: atom(),
+      TimeStamp: non_neg_integer(),
+      Operation: atom(),
+      Message: any(),
+              DigestOfMessage: any(),
+      View: [atom()],
+      UniqueSequenceNumber: non_neg_integer(),
+      Signature: any()
+            }
+            def new(
+              client,
+      timeStamp,
+      operation,
+            message,
+              digestOfMessage,
+              view,
+              uniqueSequenceNumber,
+              signature
+                ) do
+              %PrepareMessage{
+                Client: client,
+      TimeStamp: timeStamp,
+      Operation: operation,
+      Message: message,
+                DigestOfMessage: digestOfMessage,
+              View: view,
+              UniqueSequenceNumber: uniqueSequenceNumber,
+              Signature: signature
+              }
+            end
+  end
+  defmodule PBFT.CommitMessage do
+    @moduledoc """
       AppendEntries RPC request.
       """
       alias __MODULE__
@@ -310,12 +332,20 @@ defmodule PBFT.LogEntry do
       # Require that any AppendEntryRequest contains
       # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
       @enforce_keys [
+        :Client,
+        :TimeStamp,
+        :Operation,
+        :Message,
         :DigestOfMessage,
         :View,
         :UniqueSequenceNumber,
         :Signature
       ]
       defstruct(
+        Client: nil,
+        TimeStamp: nil,
+        Operation: nil,
+        Message: nil,
         DigestOfMessage: nil,
         View: nil,
         UniqueSequenceNumber: nil,
@@ -327,131 +357,118 @@ defmodule PBFT.LogEntry do
       """
 
       @spec new(
+        atom(),
+        non_neg_integer(),
+        atom(),
         any(),
         [atom()],
         non_neg_integer(),
         any()
             ) ::
-              %PrepareMessage{
+              %CommitMessage{
+                lient: atom(),
+        TimeStamp: non_neg_integer(),
+        Operation: atom(),
+        Message: any(),
                 DigestOfMessage: any(),
         View: [atom()],
         UniqueSequenceNumber: non_neg_integer(),
         Signature: any()
               }
               def new(
+                client,
+        timeStamp,
+        operation,
+              message,
                 digestOfMessage,
                 view,
                 uniqueSequenceNumber,
                 signature
                   ) do
-                %PrepareMessage{
+                %CommitMessage{
+                  Client: client,
+        TimeStamp: timeStamp,
+        Operation: operation,
+        Message: message,
                   DigestOfMessage: digestOfMessage,
                 View: view,
                 UniqueSequenceNumber: uniqueSequenceNumber,
                 Signature: signature
                 }
               end
-end
-defmodule PBFT.CommitMessage do
-  @moduledoc """
-  AppendEntries RPC request.
-  """
-  alias __MODULE__
+  end
 
-  # Require that any AppendEntryRequest contains
-  # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
-  @enforce_keys [
-    :DigestOfMessage,
-    :View,
-    :UniqueSequenceNumber,
-    :Signature
-  ]
-  defstruct(
-    DigestOfMessage: nil,
-    View: nil,
-    UniqueSequenceNumber: nil,
-    Signature: nil
-  )
+  defmodule PBFT.ReplyMessage do
+    @moduledoc """
+      AppendEntries RPC request.
+      """
+      alias __MODULE__
 
-  @doc """
-  Create a new AppendEntryRequest
-  """
+      # Require that any AppendEntryRequest contains
+      # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
+      @enforce_keys [
+        :Client,
+        :TimeStamp,
+        :Operation,
+        :Message,
+        :DigestOfMessage,
+        :View,
+        :UniqueSequenceNumber,
+        :Signature
+      ]
+      defstruct(
+        Client: nil,
+        TimeStamp: nil,
+        Operation: nil,
+        Message: nil,
+        DigestOfMessage: nil,
+        View: nil,
+        UniqueSequenceNumber: nil,
+        Signature: nil
+      )
 
-  @spec new(
-    any(),
-    [atom()],
-    non_neg_integer(),
-    any()
-        ) ::
-          %CommitMessage{
-            DigestOfMessage: any(),
-    View: [atom()],
-    UniqueSequenceNumber: non_neg_integer(),
-    Signature: any()
-          }
-          def new(
-            digestOfMessage,
-            view,
-            uniqueSequenceNumber,
-            signature
-              ) do
-            %CommitMessage{
-              DigestOfMessage: digestOfMessage,
-            View: view,
-            UniqueSequenceNumber: uniqueSequenceNumber,
-            Signature: signature
-            }
-          end
-end
+      @doc """
+      Create a new AppendEntryRequest
+      """
 
-defmodule PBFT.ReplyMessage do
-  @moduledoc """
-  AppendEntries RPC request.
-  """
-  alias __MODULE__
-
-  # Require that any AppendEntryRequest contains
-  # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
-  @enforce_keys [
-    :DigestOfMessage,
-    :View,
-    :UniqueSequenceNumber,
-    :Signature
-  ]
-  defstruct(
-    DigestOfMessage: nil,
-    View: nil,
-    UniqueSequenceNumber: nil,
-    Signature: nil
-  )
-
-  @doc """
-  Create a new AppendEntryRequest
-  """
-
-  @spec new(
-    any(),
-    [atom()],
-    non_neg_integer(),
-    any()
-        ) ::
-          %ReplyMessage{
-            DigestOfMessage: any(),
-    View: [atom()],
-    UniqueSequenceNumber: non_neg_integer(),
-    Signature: any()
-          }
-          def new(
-            digestOfMessage,
-            view,
-            uniqueSequenceNumber,
-            signature
-              ) do
-            %ReplyMessage{
-              DigestOfMessage: digestOfMessage,
-            View: view,
-            UniqueSequenceNumber: uniqueSequenceNumber,
-            Signature: signature
-            }
-          end
-end
+      @spec new(
+        atom(),
+        non_neg_integer(),
+        atom(),
+        any(),
+        [atom()],
+        non_neg_integer(),
+        any()
+            ) ::
+              %ReplyMessage{
+                lient: atom(),
+        TimeStamp: non_neg_integer(),
+        Operation: atom(),
+        Message: any(),
+                DigestOfMessage: any(),
+        View: [atom()],
+        UniqueSequenceNumber: non_neg_integer(),
+        Signature: any()
+              }
+              def new(
+                client,
+        timeStamp,
+        operation,
+              message,
+                digestOfMessage,
+                view,
+                uniqueSequenceNumber,
+                signature
+                  ) do
+                %ReplyMessage{
+                  Client: client,
+        TimeStamp: timeStamp,
+        Operation: operation,
+        Message: message,
+                  DigestOfMessage: digestOfMessage,
+                View: view,
+                UniqueSequenceNumber: uniqueSequenceNumber,
+                Signature: signature
+                }
+              end
+  end
