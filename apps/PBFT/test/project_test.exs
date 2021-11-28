@@ -4,8 +4,9 @@ defmodule ProjectTest do
   doctest PBFT
 
   defp print_a do
-    PBFT.new_configuration([:a, :b, :c], :a, 100, 1000, 20,100,1000)
+    # PBFT.new_configuration()
     IO.puts("this is a project test function")
+    PBFT.test_function()
   end
 
 
