@@ -20,4 +20,6 @@ replica becomes primary.
 
 I think the "sequence number" is just an integer.
 
-I strongly suggest we delete the "create account" function before the system somehow works.
+I strongly suggest we delete the "create account" function before the system somehow works. ok, good.
+
+from my understanding, during the tesing, in initialization phase, the primary and replicas will initialize with a set of public keys of every server, including all clients' public keys 
