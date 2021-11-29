@@ -64,13 +64,13 @@ defmodule PBFT.RequestMessage do
     message: nil,
     signature: nil
   )
-  @spec new() ::
+  @spec new(non_neg_integer(), any(), any()) ::
           %RequestMessage{
             timestamp: non_neg_integer(),
             message: any(),
             signature: any()
           }
-  def new() do
+  def new(timestamp,message,signature) do
     %RequestMessage{
       timestamp: timestamp,
       message: message,
@@ -95,7 +95,7 @@ defmodule PBFT.PrePrepareMessage do
     signature: nil,
     message: nil
   )
-  @spec new() ::
+  @spec new(non_neg_integer(), non_neg_integer(), any(), any(), any()) ::
           %PrePrepareMessage{
             view: non_neg_integer(),
             sequence_number: non_neg_integer(),
@@ -103,7 +103,7 @@ defmodule PBFT.PrePrepareMessage do
             signature: any(),
             message: any()
           }
-  def new() do
+  def new(view,sequence_number,digest,signature,message) do
     %PrePrepareMessage{
       view: view,
       sequence_number: sequence_number,
@@ -130,7 +130,7 @@ defmodule PBFT.PrepareMessage do
     identity: nil,
     signature: nil
   )
-  @spec new() ::
+  @spec new(non_neg_integer(),non_neg_integer(),any(),any(),any()) ::
           %PrepareMessage{
             view: non_neg_integer(),
             sequence_number: non_neg_integer(),
@@ -138,7 +138,7 @@ defmodule PBFT.PrepareMessage do
             identity: any(),
             signature: any()
           }
-  def new() do
+  def new(view,sequence_number,digest,identity,signature) do
     %PrepareMessage{
       view: view,
       sequence_number: sequence_number,
@@ -166,7 +166,7 @@ defmodule PBFT.CommitMessage do
     identity: nil,
     signature: nil
   )
-  @spec new() ::
+  @spec new(non_neg_integer(),non_neg_integer(),any(),any(),any()) ::
           %CommitMessage{
             view: non_neg_integer(),
             sequence_number: non_neg_integer(),
@@ -174,7 +174,7 @@ defmodule PBFT.CommitMessage do
             identity: any(),
             signature: any()
           }
-  def new() do
+  def new(view,sequence_number,digest,identity,signature) do
     %CommitMessage{
       view: view,
       sequence_number: sequence_number,
@@ -202,7 +202,7 @@ defmodule PBFT.ReplyMessage do
     result: false,
     signature: nil
   )
-  @spec new() ::
+  @spec new(non_neg_integer(),any(),any(),any(),any()) ::
           %ReplyMessage{
             view: non_neg_integer(),
     message: any(),
@@ -210,7 +210,7 @@ defmodule PBFT.ReplyMessage do
     result: any(),
     signature: any()
           }
-  def new() do
+  def new(view, message, identity, result, signature) do
     %ReplyMessage{
       view: view,
     message: message,
