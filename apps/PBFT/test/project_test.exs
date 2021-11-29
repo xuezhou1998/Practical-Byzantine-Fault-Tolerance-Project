@@ -34,7 +34,8 @@ defmodule ProjectTest do
     client =
       spawn(:client, fn ->
         client = PBFT.Client.new_client(:a)
-        PBFT.Client.new_account(client, "Tom", 1000, whoami())
+        client = PBFT.Client.new_account(client, "Tom", 1000, whoami())
+        client = PBFT.Client.update_balance(client, "Tom", 400, whoami())
         receive do
         after
           5_000 -> true

@@ -34,14 +34,14 @@ defmodule PBFT.Message do
     }
   end
 
-  @spec updatebalance(any(), integer(), atom(), integer()) :: %Message{
+  @spec update_balance(any(), integer(), atom(), integer()) :: %Message{
     op: :updatebalance,
     name: any(),
     amount: integer(),
     client: atom(),
     timestamp: integer()
   }
-  def updatebalance(n, a, c, t) do
+  def update_balance(n, a, c, t) do
     %Message{
       op: :updatebalance,
       name: n,

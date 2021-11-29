@@ -169,8 +169,9 @@ defmodule PBFT do
   def primary(state, extra_state) do
     receive do
       {sender, %PBFT.RequestMessage{
-        
+
       }} -> IO.puts("recieved.")
+      send(sender, :ok)
       primary(state, extra_state)
     end
   end
@@ -235,18 +236,23 @@ defmodule PBFT.Client do
     IO.puts("Message have been sent to #{client.primary}.")
     receive do
       {_, :ok} ->
-        {client}
+        client
     end
   end
 
-  @spec updatebalance(%Client{}, %PBFT.RequestMessage{}) :: {:ok, %Client{}}
-  def updatebalance(client, item) do
+  @spec update_balance(%Client{}, any(), integer(), atom()) :: {%Client{}}
+  def update_balance(client, name, amount, client_pid) do
     primary = client.primary
-    send(primary, item)
-
+    IO.puts("client timestamp is #{client.timestamp}.")
+    client = %{client | timestamp: client.timestamp + 1}
+    IO.puts("client timestamp is #{client.timestamp}.")
+    send(primary, %PBFT.RequestMessage{timestamp: client.timestamp,
+                                      message: PBFT.Message.update_balance(name, amount, client_pid, client.timestamp),
+                                      signature: nil})
+    IO.puts("Message have been sent to #{client.primary}.")
     receive do
       {_, :ok} ->
-        {:ok, client}
+        client
     end
   end
 end
