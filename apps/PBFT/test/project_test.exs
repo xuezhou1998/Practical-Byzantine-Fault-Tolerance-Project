@@ -9,18 +9,17 @@ defmodule ProjectTest do
     PBFT.test_function()
   end
 
-
-
   test "simple project test" do
     print_a()
     IO.puts("this is a simple test")
   end
-  import Emulation, only: [spawn: 2, send: 2]
+
+  import Emulation, only: [spawn: 2, send: 2, whoami: 0]
 
   import Kernel,
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
 
-  test "Nothing crashes during startup and heartbeats" do
+  test "client creation" do
     Emulation.init()
     Emulation.append_fuzzers([Fuzzers.delay(2)])
 
@@ -34,8 +33,8 @@ defmodule ProjectTest do
 
     client =
       spawn(:client, fn ->
-        client = PBFT.Client.new_client(:c)
-
+        client = PBFT.Client.new_client(:a)
+        PBFT.Client.new_account(client, "Tom", 1000, whoami())
         receive do
         after
           5_000 -> true

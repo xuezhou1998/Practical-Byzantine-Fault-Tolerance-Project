@@ -29,9 +29,10 @@ defmodule PBFT do
     commit_log: []
   )
   @spec new_configuration(
-    non_neg_integer(),
+    [atom()],
     atom(),
-
+    non_neg_integer(),
+    non_neg_integer(),
     non_neg_integer(),
     [any()],
     any(),
@@ -137,7 +138,7 @@ defmodule PBFT do
 
   @spec make_primary(%PBFT{}) :: no_return()
   def make_primary(state) do
-    replica( %{state | is_primary: true}, nil)
+    primary(%{state | is_primary: true}, nil)
   end
 
 
@@ -168,38 +169,9 @@ defmodule PBFT do
   def primary(state, extra_state) do
     receive do
       {sender, %PBFT.RequestMessage{
-        Client: client,
-        TimeStamp: timeStamp,
-        Operation: operation,
-        Message: message,
-        DigestOfMessage: digestOfMessage,
-        View: view,
-        UniqueSequenceNumber: _UniqueSequenceNumber,
-        Signature: client_signature
-        }
-      }->
-
-        validation_result=validation(state,client_signature,extra_state)
-        if validation_result==true do
-          uniq_seq=generate_unique_sequence(state,extra_state)
-          primary_time_stamp=timeStamp
-          primary_view=view
-          primary_signature=authentication(state,extra_state)
-
-          pre_prepare_message=PBFT.PrePrepareMessage.new(
-          client,
-          primary_time_stamp,
-          operation,
-          message,
-          digestOfMessage,
-          primary_view,
-          uniq_seq,
-          primary_signature)
-
-          broadcast_to_others(state,pre_prepare_message,extra_state)
-        end
-        # TODO: You might need to update the following call.
-        primary(state, extra_state)
+        
+      }} -> IO.puts("recieved.")
+      primary(state, extra_state)
     end
   end
 
@@ -212,76 +184,24 @@ defmodule PBFT do
   def replica(state, extra_state) do
     #TODO: add timer and view_changing logic
     receive do
-      {sender, %PBFT.PrePrepareMessage{
-        Client: client,
-        TimeStamp: timeStamp,
-        Operation: operation,
-        Message: message,
-        DigestOfMessage: digestOfMessage,
-        View: view,
-        UniqueSequenceNumber: uniqueSequenceNumber,
-        Signature: signature
-      }} -> #TODO
-        #check signature
-        validation_result=validation(state,signature,extra_state)
-        if validation_result==true do
-          #check it is in v and d is correct for m
-          #check other{v, n}doesn't exist
-          check_v_n_result=check_v_n(state,view,uniqueSequenceNumber,extra_state)
+      #{sender, %PBFT.PrePrepareMessage{}} -> #TODO
 
-          if check_v_n_result==true do
-            check_d_result=check_d(state,digestOfMessage,message,extra_state)
-            if check_d_result==true do
-              check_n_result=check_n(state,uniqueSequenceNumber,extra_state)
-              if check_n_result==true do
-                #add to pre_prepare log
-                new_entry = PBFT.LogEntry.update_balance(client,timeStamp,operation,message,digestOfMessage,view,uniqueSequenceNumber,signature)
-
-                state_1 = add_to_log(state,:pre_prepare,new_entry,extra_state)
-
-                #create prepare message
-                new_prepare_msg=PBFT.PrepareMessage.new(client, timeStamp, operation, message, digestOfMessage, view, uniqueSequenceNumber, signature)
-                #add to prepare log
-                state_2 = add_to_log(state_1, :prepare,new_entry,extra_state)
-                #multicast prepare message
-                _=broadcast_to_others(state_2,new_prepare_msg,extra_state)
-                replica(state_2,extra_state)
-              else
-                replica(state,extra_state)
-              end
-            else
-              replica(state,extra_state)
-            end
-          else
-            replica(state,extra_state)
-          end
-        else
-          replica(state,extra_state)
-        end
-
-
-
-      {sender, %PBFT.PrepareMessage{
-
-      }} -> #TODO
+      #{sender, %PBFT.PrepareMessage{}} -> #TODO
         #check signature
         #check previous log
         #check PBFT logic
         #multicast commit messag
-        raise "Not yet implemented"
 
-      {sender, %PBFT.CommitMessage{}} -> #TODO
+      #{sender, %PBFT.CommitMessage{}} -> #TODO
+        #replica(state, extra_state)
         #check signature
         #check previous log
         #check PBFT logic
         #commit
         #send reply
-        raise "Not yet implemented"
       {sender, %PBFT.RequestMessage{}} ->
-        send(sender, {:redirect, state.current_leader})
+        send(sender, {:redirect, state.current_primary})
         replica(state, extra_state)
-
-        raise "Not yet implemented"
     end
 
   end
@@ -295,39 +215,38 @@ defmodule PBFT.Client do
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
 
   alias __MODULE__
-  @enforce_keys [:leader]
-  defstruct(leader: nil)
+  @enforce_keys [:primary, :timestamp]
+  defstruct(primary: nil, timestamp: 0)
 
-  @spec new_client(atom()) :: %Client{leader: atom()}
+  @spec new_client(atom()) :: %Client{primary: atom(), timestamp: integer()}
   def new_client(member) do
-    %Client{leader: member}
+    %Client{primary: member, timestamp: 0}
   end
 
-  @spec newaccount(%Client{}, %PBFT.RequestMessage{}) :: {:ok, %Client{}}
-  def newaccount(client, item) do
-    leader = client.leader
-    send(leader, item)
-
+  @spec new_account(%Client{}, any(), integer(), atom()) :: {%Client{}}
+  def new_account(client, name, amount, client_pid) do
+    primary = client.primary
+    IO.puts("client timestamp is #{client.timestamp}.")
+    client = %{client | timestamp: client.timestamp + 1}
+    IO.puts("client timestamp is #{client.timestamp}.")
+    send(primary, %PBFT.RequestMessage{timestamp: client.timestamp,
+                                      message: PBFT.Message.new_account(name, amount, client_pid, client.timestamp),
+                                      signature: nil})
+    IO.puts("Message have been sent to #{client.primary}.")
     receive do
       {_, :ok} ->
-        {:ok, client}
-
-      {_, {:redirect, new_leader}} ->
-        newaccount(%{client | leader: new_leader}, item)
+        {client}
     end
   end
 
   @spec updatebalance(%Client{}, %PBFT.RequestMessage{}) :: {:ok, %Client{}}
   def updatebalance(client, item) do
-    leader = client.leader
-    send(leader, item)
+    primary = client.primary
+    send(primary, item)
 
     receive do
       {_, :ok} ->
         {:ok, client}
-
-      {_, {:redirect, new_leader}} ->
-        newaccount(%{client | leader: new_leader}, item)
     end
   end
 end

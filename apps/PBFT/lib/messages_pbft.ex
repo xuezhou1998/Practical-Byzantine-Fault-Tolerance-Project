@@ -1,457 +1,140 @@
-defmodule PBFT.LogEntry do
-
-    @moduledoc """
-    AppendEntries RPC request.
-    """
-    alias __MODULE__
-
-    # Require that any AppendEntryRequest contains
-    # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
-    @enforce_keys [
-      :Client,
-      :TimeStamp,
-      :Operation,
-      :Message,
-      :DigestOfMessage,
-      :View,
-      :UniqueSequenceNumber,
-      :Signature
-    ]
-    defstruct(
-      Client: nil,
-      TimeStamp: nil,
-      Operation: nil,
-      Message: nil,
-      DigestOfMessage: nil,
-      View: nil,
-      UniqueSequenceNumber: nil,
-      Signature: nil
-    )
-
-    @doc """
-    Create a new AppendEntryRequest
-    """
-
-    @spec update_balance(
-      atom(),
-      non_neg_integer(),
-      atom(),
-      any(),
-      any(),
-      non_neg_integer(),
-      non_neg_integer(),
-      any()
-          ) ::
-      %LogEntry{
-              Client: atom(),
-      TimeStamp: non_neg_integer(),
-      Operation: atom(),
-      Message: any(),
-              DigestOfMessage: any(),
-      View: non_neg_integer(),
-      UniqueSequenceNumber: non_neg_integer(),
-      Signature: any()
-            }
-            def update_balance(
-              client,
-      timeStamp,
-      operation,
-            message,
-              digestOfMessage,
-              view,
-              uniqueSequenceNumber,
-              signature
-                ) do
-              %LogEntry{
-                Client: client,
-      TimeStamp: timeStamp,
-      Operation: operation,
-      Message: message,
-                DigestOfMessage: digestOfMessage,
-              View: view,
-              UniqueSequenceNumber: uniqueSequenceNumber,
-              Signature: signature
-              }
-            end
-  end
-
-  defmodule PBFT.InitializeDigitalSignatureMessage do
-    alias __MODULE__
-
-    @enforce_keys [
-      :my_public_key
-    ]
-    defstruct(
-      my_public_key: nil
-    )
-
-
-    @spec new(
-      any()
-          ) ::
-            %InitializeDigitalSignatureMessage{
-              my_public_key: any()
-            }
-    def new(
-      my_public_key
-        ) do
-      %InitializeDigitalSignatureMessage{
-        my_public_key: my_public_key
-      }
-    end
-  end
-
-  defmodule PBFT.NewAccountMessage do
-    @moduledoc """
-    AppendEntries RPC request.
-    """
-    alias __MODULE__
-
-    # Require that any AppendEntryRequest contains
-    # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
-    @enforce_keys [
-      :DigestOfMessage,
-      :View,
-      :UniqueSequenceNumber,
-      :Signature
-    ]
-    defstruct(
-      DigestOfMessage: nil,
-      View: nil,
-      UniqueSequenceNumber: nil,
-      Signature: nil
-    )
-
-    @doc """
-    Create a new AppendEntryRequest
-    """
-
-    @spec new(
-      any(),
-      any(),
-      non_neg_integer(),
-      non_neg_integer(),
-      any()
-          ) ::
-            %RequestMessage{
-              Client: atom(),
-      TimeStamp: non_neg_integer(),
-      Operation: atom(),
-      Message: any(),
-              DigestOfMessage: any(),
-      View: non_neg_integer(),
-      UniqueSequenceNumber: non_neg_integer(),
-      Signature: any()
-            }
-    def new(
-      digestOfMessage,
-      view,
-      uniqueSequenceNumber,
-      signature
-        ) do
-      %NewAccountMessage{
-        DigestOfMessage: digestOfMessage,
-      View: view,
-      UniqueSequenceNumber: uniqueSequenceNumber,
-      Signature: signature
-      }
-    end
-  end
-
-  defmodule PBFT.UpdataBalanceMessage do
-    @moduledoc """
-    AppendEntries RPC request.
-    """
-    alias __MODULE__
-
-    # Require that any AppendEntryRequest contains
-    # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
-    @enforce_keys [
-      :DigestOfMessage,
-      :View,
-      :UniqueSequenceNumber,
-      :Signature
-    ]
-    defstruct(
-      DigestOfMessage: nil,
-      View: nil,
-      UniqueSequenceNumber: nil,
-      Signature: nil
-    )
-
-    @doc """
-    Create a new AppendEntryRequest
-    """
-
-    @spec new(
-      any(),
-      any(),
-      non_neg_integer(),
-      non_neg_integer(),
-      any()
-          ) ::
-            %PrePrepareMessage{
-              Client: atom(),
-      TimeStamp: non_neg_integer(),
-      Operation: atom(),
-      Message: any(),
-              DigestOfMessage: any(),
-      View: non_neg_integer(),
-      UniqueSequenceNumber: non_neg_integer(),
-      Signature: any()
-            }
-    def new(
-      digestOfMessage,
-      view,
-      uniqueSequenceNumber,
-      signature
-        ) do
-      %UpdataBalanceMessage{
-        DigestOfMessage: digestOfMessage,
-      View: view,
-      UniqueSequenceNumber: uniqueSequenceNumber,
-      Signature: signature
-      }
-    end
-  end
-
-
-  defmodule PBFT.PrePrepareMessage do
-    alias __MODULE__
-
-    @enforce_keys [
-      :DigestOfMessage,
-      :View,
-      :UniqueSequenceNumber,
-      :Signature
-    ]
-    defstruct(
-      DigestOfMessage: nil,
-      View: nil,
-      UniqueSequenceNumber: nil,
-      Signature: nil
-    )
-
-    @doc """
-    Create a new AppendEntryRequest
-    """
-
-    @spec new(
-      any(),
-      any(),
-      non_neg_integer(),
-      non_neg_integer(),
-      any()
-          ) ::
-            %PrepareMessage{
-              Client: atom(),
-      TimeStamp: non_neg_integer(),
-      Operation: atom(),
-      Message: any(),
-              DigestOfMessage: any(),
-      View: non_neg_integer(),
-      UniqueSequenceNumber: non_neg_integer(),
-      Signature: any()
-            }
-            def new(
-              digestOfMessage,
-              view,
-              uniqueSequenceNumber,
-              signature
-                ) do
-              %PrePrepareMessage{
-                DigestOfMessage: digestOfMessage,
-              View: view,
-              UniqueSequenceNumber: uniqueSequenceNumber,
-              Signature: signature
-              }
-            end
-  end
-
-  defmodule PBFT.PrepareMessage do
-      @moduledoc """
-      AppendEntries RPC request.
-      """
-      alias __MODULE__
-
-      # Require that any AppendEntryRequest contains
-      # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
-      @enforce_keys [
-        :DigestOfMessage,
-        :View,
-        :UniqueSequenceNumber,
-        :Signature
-      ]
-      defstruct(
-        DigestOfMessage: nil,
-        View: nil,
-        UniqueSequenceNumber: nil,
-        Signature: nil
-      )
-
-      @doc """
-      Create a new AppendEntryRequest
-      """
-
-      @spec new(
-        atom(),
-        non_neg_integer(),
-        atom(),
-        any(),any(),
-        non_neg_integer(),
-        non_neg_integer(),
-        any()
-            ) ::
-              %CommitMessage{
-                Client: atom(),
-        TimeStamp: non_neg_integer(),
-        Operation: atom(),
-        Message: any(),
-                DigestOfMessage: any(),
-        View: non_neg_integer(),
-        UniqueSequenceNumber: non_neg_integer(),
-        Signature: any()
-              }
-              def new(
-                digestOfMessage,
-                view,
-                uniqueSequenceNumber,
-                signature
-                  ) do
-                %PrepareMessage{
-                  DigestOfMessage: digestOfMessage,
-                View: view,
-                UniqueSequenceNumber: uniqueSequenceNumber,
-                Signature: signature
-                }
-              end
-end
-defmodule PBFT.CommitMessage do
-  @moduledoc """
-  AppendEntries RPC request.
-  """
+# message = {operation, username, amount}
+# message's content is meaningless unless being commited
+# message instance: {:newaccount, "Tom", 1000, :client1, 1}, {:updatebalance, "Tom", 400, :client1, 2}
+defmodule PBFT.Message do
   alias __MODULE__
-
-  # Require that any AppendEntryRequest contains
-  # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
   @enforce_keys [
-    :DigestOfMessage,
-    :View,
-    :UniqueSequenceNumber,
-    :Signature
+    :op,
+    :name,
+    :amount,
+    :client,
+    :timestamp
   ]
   defstruct(
-    DigestOfMessage: nil,
-    View: nil,
-    UniqueSequenceNumber: nil,
-    Signature: nil
+    op: nil,
+    name: nil,
+    amount: nil,
+    client: nil,
+    timestamp: 0
   )
-
-  @doc """
-  Create a new AppendEntryRequest
-  """
-
-  @spec new(
-    any(),
-    [atom()],
-    non_neg_integer(),
-    any()
-        ) ::
-          %CommitMessage{
-            DigestOfMessage: any(),
-    View: [atom()],
-    UniqueSequenceNumber: non_neg_integer(),
-    Signature: any()
+  @spec new_account(any(), integer(), atom(), integer()) :: %Message{
+            op: :newaccount,
+            name: any(),
+            amount: integer(),
+            client: atom(),
+            timestamp: integer()
           }
-          def new(
-            digestOfMessage,
-            view,
-            uniqueSequenceNumber,
-            signature
-              ) do
-            %CommitMessage{
-              DigestOfMessage: digestOfMessage,
-            View: view,
-            UniqueSequenceNumber: uniqueSequenceNumber,
-            Signature: signature
-            }
-          end
-end
+  def new_account(n, a, c, t) do
+    %Message{
+      op: :newaccount,
+      name: n,
+      amount: a,
+      client: c,
+      timestamp: t
+    }
+  end
 
-defmodule PBFT.ReplyMessage do
-  @moduledoc """
-  AppendEntries RPC request.
-  """
-  alias __MODULE__
-
-  # Require that any AppendEntryRequest contains
-  # a :term, :leader_id, :prev_log_index, and :leader_commit_index.
-  @enforce_keys [
-    :DigestOfMessage,
-    :View,
-    :UniqueSequenceNumber,
-    :Signature
-  ]
-  defstruct(
-    DigestOfMessage: nil,
-    View: nil,
-    UniqueSequenceNumber: nil,
-    Signature: nil
-  )
-
-  @doc """
-  Create a new AppendEntryRequest
-  """
-
-  @spec new(
-    any(),
-    [atom()],
-    non_neg_integer(),
-    any()
-        ) ::
-          %ReplyMessage{
-            DigestOfMessage: any(),
-    View: [atom()],
-    UniqueSequenceNumber: non_neg_integer(),
-    Signature: any()
-          }
-          def new(
-            digestOfMessage,
-            view,
-            uniqueSequenceNumber,
-            signature
-              ) do
-            %ReplyMessage{
-              DigestOfMessage: digestOfMessage,
-            View: view,
-            UniqueSequenceNumber: uniqueSequenceNumber,
-            Signature: signature
-            }
-          end
+  @spec updatebalance(any(), integer(), atom(), integer()) :: %Message{
+    op: :updatebalance,
+    name: any(),
+    amount: integer(),
+    client: atom(),
+    timestamp: integer()
+  }
+  def updatebalance(n, a, c, t) do
+    %Message{
+      op: :updatebalance,
+      name: n,
+      amount: a,
+      client: c,
+      timestamp: t
+    }
+  end
 end
 
 defmodule PBFT.RequestMessage do
+  alias __MODULE__
+  @enforce_keys [
+    :timestamp,
+    :message,
+    :signature
+  ]
+  defstruct(
+    timestamp: nil,
+    message: nil,
+    signature: nil
+  )
+end
 
+defmodule PBFT.PrePrepareMessage do
+  alias __MODULE__
+  @enforce_keys [
+    :view,
+    :sequence_number,
+    :digest,
+    :signature,
+    :message
+  ]
+  defstruct(
+    view: nil,
+    sequence_number: 0,
+    digest: nil,
+    signature: nil,
+    message: nil
+  )
+end
+
+defmodule PBFT.PrepareMessage do
+  alias __MODULE__
+  @enforce_keys [
+    :view,
+    :sequence_number,
+    :digest,
+    :identity, # "i"
+    :signature
+  ]
+  defstruct(
+    view: nil,
+    sequence_number: 0,
+    digest: nil,
+    identity: nil,
+    signature: nil
+  )
+end
+
+defmodule PBFT.CommitMessage do
+  alias __MODULE__
+  @enforce_keys [
+    :view,
+    :sequence_number,
+    :digest,
+    :identity,
+    :signature
+  ]
+  defstruct(
+    view: nil,
+    sequence_number: 0,
+    digest: nil,
+    identity: nil,
+    signature: nil
+  )
+end
+
+defmodule PBFT.ReplyMessage do
   alias __MODULE__
 
   @enforce_keys [
-    :Client,
-    :TimeStamp,
-    :Operation,
-    :Message,
-    :DigestOfMessage,
-    :View,
-    :UniqueSequenceNumber,
-    :Signature
+    :view,
+    :message,
+    :identity,
+    :result,
+    :signature,
   ]
   defstruct(
-    Client: nil,
-    TimeStamp: nil,
-    Operation: nil,
-    Message: nil,
-    DigestOfMessage: nil,
-    View: nil,
-    UniqueSequenceNumber: nil,
-    Signature: nil
+    view: 0,
+    message: nil,
+    identity: nil,
+    result: false,
+    signature: nil
   )
 end
