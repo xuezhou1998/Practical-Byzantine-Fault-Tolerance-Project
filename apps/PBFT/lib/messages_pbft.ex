@@ -22,7 +22,7 @@ defmodule PBFT.Message do
             name: any(),
             amount: integer(),
             client: atom(),
-            timestamp: integer()
+            timestamp: non_neg_integer()
           }
   def new_account(n, a, c, t) do
     %Message{
@@ -39,7 +39,7 @@ defmodule PBFT.Message do
     name: any(),
     amount: integer(),
     client: atom(),
-    timestamp: integer()
+    timestamp: non_neg_integer()
   }
   def update_balance(n, a, c, t) do
     %Message{
@@ -64,6 +64,19 @@ defmodule PBFT.RequestMessage do
     message: nil,
     signature: nil
   )
+  @spec new() ::
+          %RequestMessage{
+            timestamp: non_neg_integer(),
+            message: any(),
+            signature: any()
+          }
+  def new() do
+    %RequestMessage{
+      timestamp: timestamp,
+      message: message,
+      signature: signature
+    }
+  end
 end
 
 defmodule PBFT.PrePrepareMessage do
@@ -82,6 +95,23 @@ defmodule PBFT.PrePrepareMessage do
     signature: nil,
     message: nil
   )
+  @spec new() ::
+          %PrePrepareMessage{
+            view: non_neg_integer(),
+            sequence_number: non_neg_integer(),
+            digest: any(),
+            signature: any(),
+            message: any()
+          }
+  def new() do
+    %PrePrepareMessage{
+      view: view,
+      sequence_number: sequence_number,
+      digest: digest,
+      signature: signature,
+      message: message
+    }
+  end
 end
 
 defmodule PBFT.PrepareMessage do
@@ -100,6 +130,24 @@ defmodule PBFT.PrepareMessage do
     identity: nil,
     signature: nil
   )
+  @spec new() ::
+          %PrepareMessage{
+            view: non_neg_integer(),
+            sequence_number: non_neg_integer(),
+            digest: any(),
+            identity: any(),
+            signature: any()
+          }
+  def new() do
+    %PrepareMessage{
+      view: view,
+      sequence_number: sequence_number,
+      digest: digest,
+      identity: identity,
+      signature: signature
+
+    }
+  end
 end
 
 defmodule PBFT.CommitMessage do
@@ -118,6 +166,23 @@ defmodule PBFT.CommitMessage do
     identity: nil,
     signature: nil
   )
+  @spec new() ::
+          %CommitMessage{
+            view: non_neg_integer(),
+            sequence_number: non_neg_integer(),
+            digest: any(),
+            identity: any(),
+            signature: any()
+          }
+  def new() do
+    %CommitMessage{
+      view: view,
+      sequence_number: sequence_number,
+      digest: digest,
+      identity: identity,
+      signature: signature
+    }
+  end
 end
 
 defmodule PBFT.ReplyMessage do
@@ -137,4 +202,21 @@ defmodule PBFT.ReplyMessage do
     result: false,
     signature: nil
   )
+  @spec new() ::
+          %ReplyMessage{
+            view: non_neg_integer(),
+    message: any(),
+    identity: any(),
+    result: any(),
+    signature: any()
+          }
+  def new() do
+    %ReplyMessage{
+      view: view,
+    message: message,
+    identity: identity,
+    result: result,
+    signature: signature
+    }
+  end
 end

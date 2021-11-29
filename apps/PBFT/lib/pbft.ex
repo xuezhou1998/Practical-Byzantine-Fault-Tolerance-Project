@@ -29,7 +29,7 @@ defmodule PBFT do
     commit_log: []
   )
   @spec new_configuration(
-    [atom()],
+    non_neg_integer(),
     atom(),
     non_neg_integer(),
     non_neg_integer(),
@@ -185,7 +185,49 @@ defmodule PBFT do
   def replica(state, extra_state) do
     #TODO: add timer and view_changing logic
     receive do
-      #{sender, %PBFT.PrePrepareMessage{}} -> #TODO
+      {sender, %PBFT.PrePrepareMessage{
+        message: message,
+        digest: digestOfMessage,
+        view: view,
+        sequence_number: uniqueSequenceNumber,
+        signature: signature
+      }} -> #TODO
+        #check signature
+        validation_result=validation(state,signature,extra_state)
+        if validation_result==true do
+          #check it is in v and d is correct for m
+          #check other{v, n}doesn't exist
+          check_v_n_result=check_v_n(state,view,uniqueSequenceNumber,extra_state)
+
+          if check_v_n_result==true do
+            check_d_result=check_d(state,digestOfMessage,message,extra_state)
+            if check_d_result==true do
+              check_n_result=check_n(state,uniqueSequenceNumber,extra_state)
+              if check_n_result==true do
+                #add to pre_prepare log
+                new_entry = PBFT.LogEntry.update_balance(client,timeStamp,operation,message,digestOfMessage,view,uniqueSequenceNumber,signature)
+
+                state_1 = add_to_log(state,:pre_prepare,new_entry,extra_state)
+
+                #create prepare message
+                new_prepare_msg=PBFT.PrepareMessage
+                #add to prepare log
+                state_2 = add_to_log(state_1, :prepare,new_entry,extra_state)
+                #multicast prepare message
+                _=broadcast_to_others(state_2,new_prepare_msg,extra_state)
+                replica(state_2,extra_state)
+              else
+                replica(state,extra_state)
+              end
+            else
+              replica(state,extra_state)
+            end
+          else
+            replica(state,extra_state)
+          end
+        else
+          replica(state,extra_state)
+        end
 
       #{sender, %PBFT.PrepareMessage{}} -> #TODO
         #check signature
