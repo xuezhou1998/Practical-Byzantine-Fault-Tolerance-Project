@@ -25,3 +25,7 @@ I strongly suggest we delete the "create account" function before the system som
 from my understanding, during the tesing, in initialization phase, the primary and replicas will initialize with a set of public keys of every server, including all clients' public keys 
 
 i have read the section 4 of the paper.
+
+i added new() methods for the messages from preprepare to reply
+
+i changed the integer type into non-neg-integer type

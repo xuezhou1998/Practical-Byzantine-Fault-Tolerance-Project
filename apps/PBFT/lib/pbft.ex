@@ -29,7 +29,7 @@ defmodule PBFT do
     commit_log: []
   )
   @spec new_configuration(
-    [atom()],
+    non_neg_integer(),
     atom(),
     non_neg_integer(),
     non_neg_integer(),
@@ -185,7 +185,7 @@ defmodule PBFT do
   def replica(state, extra_state) do
     #TODO: add timer and view_changing logic
     receive do
-      #{sender, %PBFT.PrePrepareMessage{}} -> #TODO
+
 
       #{sender, %PBFT.PrepareMessage{}} -> #TODO
         #check signature
