@@ -23,10 +23,8 @@ defmodule PBFT do
     account_book: nil,
     public_keys_list: nil,
     my_private_key: nil,
-    my_public_key: nil,
-    pre_prepare_log: [],
-    prepare_log: [],
-    commit_log: []
+    my_public_key: nil
+
   )
   @spec new_configuration(
     non_neg_integer(),
@@ -139,7 +137,7 @@ defmodule PBFT do
   end
 
   @doc """
-  below is a function that make primary transit to sequence
+  below is a function that make a specific replica the primary
   """
   @spec make_primary(%PBFT{}) :: no_return()
   def make_primary(state) do
@@ -147,11 +145,21 @@ defmodule PBFT do
   end
 
   @doc """
-  below is a function that checks if the replica had received a pre-prepare message for view and sequence number for sequence_number containing a different digest
+  below is a function that checks if the replica had received a pre-prepare message
+  for view v and sequence_number n containing a different digest.
+  If there is none, then return true, otherwise return false.
   """
-  @spec check_v_n(%PBFT{},[atom()],non_neg_integer(),any()) :: boolean()
-  def check_v_n(state,view,unique_sequence,extra_state) do
-    true
+  @spec check_v_n(%PBFT{},%PBFT.PrePrepareMessage{},[any()],any()) :: boolean()
+  def check_v_n(state, prePrepareMsg, log, extra_state) do
+    curr_msg = tl(log)
+    if curr_msg.__struct__ ==  prePrepareMsg.__struct__ && curr_msg.view == prePrepareMsg.view && curr_msg.sequence_number == prePrepareMsg.sequence_number && curr_msg.digest != prePrepareMsg.digest do
+      false
+    end
+    if length(log) == 0 do
+      true
+    else
+      check_v_n(state, prePrepareMsg,Enum.take(log,length(log)-1),extra_state)
+    end
   end
 
 
@@ -160,38 +168,44 @@ defmodule PBFT do
   """
   @spec check_d(%PBFT{},any(),any(),any()) :: boolean()
   def check_d(state,digest,message,extra_state) do
-    true
+    correct_digest=message_digest(state,message,extra_state)
+    if digest == correct_digest do
+      true
+    else
+      false
+    end
   end
 
   @doc """
   below is a function that checks if the sequence_number in the pre-prepare message is between a low water mark sequence_lower_bound and a higher water mark sequence_upper_bound
   """
   @spec check_n(%PBFT{},non_neg_integer(),any()) :: boolean()
-  def check_n(state,uniqueSequenceNumber,extra_state) do
+  def check_n(state,sequence_number,extra_state) do
     true
   end
 
   @doc """
   below is a function that adds a messages to different logs
   """
-  @spec add_to_log(%PBFT{},atom(),any(),any()) :: no_return()
-  def add_to_log(state,log_type,entry,extra_state) do
-      case log_type do
-      :pre_prepare->
-        %{state | pre_prepare_log: [entry|state.pre_prepare_log]}
-      :prepare->
-        %{state | prepare_log: [entry|state.prepare_log]}
-      :commit->
-        %{state | commit_log: [entry|state.commit_log]}
-      end
+  @spec add_to_log(%PBFT{},any(),any()) :: no_return()
+  def add_to_log(state,entry,_extra_state) do
+
+      %{state | log: [entry|state.log]}
+
   end
 
   @doc """
   below is a function that digests a message, returing the digested message
   """
-  @spec message_digest(%PBFT{},any(),any())::any()
-  def message_digest(state, message, extra_state) do
-    :digest
+  @spec message_digest(%PBFT{},%PBFT.Message{},any()) :: binary()
+  def message_digest(_state, message, _extra_state) do
+    msg_string=
+    to_string(message.op) <>
+    to_string(message.name) <>
+    to_string(message.amount) <>
+    to_string(message.client) <>
+    to_string(message.timestamp)
+    :crypto.hash(:sha, msg_string)
   end
   @spec primary(%PBFT{is_primary: true}, any()) :: no_return()
   def primary(state, extra_state) do
@@ -201,7 +215,7 @@ defmodule PBFT do
         message: message,
         signature: signature
       }} ->
-        IO.puts("recieved.")
+        IO.puts("client request recieved.")
         validation_result=validation(state,signature,extra_state)
         if validation_result==true do
           sequence_number=generate_unique_sequence(state,extra_state)
