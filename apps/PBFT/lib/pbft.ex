@@ -66,12 +66,6 @@ defmodule PBFT do
   }
   end
 
-  # @spec initialize_digital_signatures(%PBFT{}) :: no_return()
-  # def initialize_digital_signatures(state) do
-
-  #   broadcast_to_others(state,state.my_public_key)
-  # end
-
   @spec test_function()::no_return()
   def test_function() do
     IO.puts("test inside the PBFT.ex")
@@ -89,6 +83,10 @@ defmodule PBFT do
     |> Enum.map(fn pid -> send(pid, message) end)
   end
 
+
+  @doc """
+  below is a function that validates the signature
+  """
   @spec validation(%PBFT{is_primary: true},any() ,any()) :: boolean()
   def validation(state,signature, extra_state) do
     # # pretend receive the message...
@@ -165,12 +163,30 @@ defmodule PBFT do
         %{state | commit_log: [entry|state.commit_log]}
       end
   end
+  @spec message_digest(%PBFT{},any(),any())::any()
+  def message_digest(state, message, extra_state) do
+    :digest
+  end
   @spec primary(%PBFT{is_primary: true}, any()) :: no_return()
   def primary(state, extra_state) do
     receive do
       {sender, %PBFT.RequestMessage{
+        timestamp: timestamp,
+        message: message,
+        signature: signature
+      }} ->
+        IO.puts("recieved.")
+        validation_result=validation(state,signature,extra_state)
+        if validation_result==true do
+          sequence_number=generate_unique_sequence(state,extra_state)
+          primary_time_stamp=timestamp
+          primary_view=state.view
+          primary_signature=authentication(state,extra_state)
+          digest=message_digest(state, message, extra_state)
+          pre_prepare_message=PBFT.PrePrepareMessage.new(primary_view,sequence_number,digest,primary_signature,message)
 
-      }} -> IO.puts("recieved.")
+          broadcast_to_others(state,pre_prepare_message,extra_state)
+        end
       send(sender, :ok)
       primary(state, extra_state)
     end
@@ -185,7 +201,15 @@ defmodule PBFT do
   def replica(state, extra_state) do
     #TODO: add timer and view_changing logic
     receive do
-
+      {sender, %PBFT.PrePrepareMessage{
+        view: view,
+        sequence_number: sequence_number,
+        digest: digest,
+        signature: signature,
+        message: message
+        }
+      } ->
+        raise "not implemented yet"#TODO
 
       #{sender, %PBFT.PrepareMessage{}} -> #TODO
         #check signature
