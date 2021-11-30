@@ -70,11 +70,18 @@ defmodule PBFT do
   def test_function() do
     IO.puts("test inside the PBFT.ex")
   end
+
+  @doc """
+  below is a function generating unique sequence,
+  """
   @spec generate_unique_sequence(%PBFT{is_primary: true}, any()) :: integer()
   def generate_unique_sequence(state, extra_state) do
     0
   end
 
+  @doc """
+  below is a function that sends message to all servers other than myself
+  """
   @spec broadcast_to_others(%PBFT{}, any(),any()) :: [boolean()]
   defp broadcast_to_others(state, message, extra_state) do
     me = whoami()
@@ -85,7 +92,7 @@ defmodule PBFT do
 
 
   @doc """
-  below is a function that validates the signature
+  below is a function that validates the signature.
   """
   @spec validation(%PBFT{is_primary: true},any() ,any()) :: boolean()
   def validation(state,signature, extra_state) do
@@ -106,6 +113,10 @@ defmodule PBFT do
     # # assert(msg == recv_msg_unserialized)
     true
   end
+
+  @doc """
+  below is a function that create and sign a signature using the private key.
+  """
   @spec authentication(%PBFT{},any()) :: any()
   def authentication(state, extra_state) do
     # # load the RSA keys from a file on disk
@@ -126,32 +137,43 @@ defmodule PBFT do
     # # pretend transmit the message...
     :signature
   end
-  # @spec pre_prepare(%PBFT{is_primary: true},any(),[atom()],non_neg_integer(),any())::boolean()
-  # def pre_prepare(state,digest_of_message,view,sequence_number,signature) do
-  #   msg=PBFT.PrePrepareMessage.new(digest_of_message,view,sequence_number,signature)
-  #   hear_back=broadcast_to_others(state, msg)
-  #   {_,encrpted_msg}=MyApp.Vault.encrypt("plaintext")
-  #   hear_back
-  # end
 
+  @doc """
+  below is a function that make primary transit to sequence
+  """
   @spec make_primary(%PBFT{}) :: no_return()
   def make_primary(state) do
     primary(%{state | is_primary: true}, nil)
   end
 
-
+  @doc """
+  below is a function that checks if the replica had received a pre-prepare message for view and sequence number for sequence_number containing a different digest
+  """
   @spec check_v_n(%PBFT{},[atom()],non_neg_integer(),any()) :: boolean()
-  def check_v_n(state,external_view,unique_sequence_number,extra_state) do
+  def check_v_n(state,view,unique_sequence,extra_state) do
     true
   end
+
+
+  @doc """
+  below is a function that checks if the digest is the digest for message
+  """
   @spec check_d(%PBFT{},any(),any(),any()) :: boolean()
-  def check_d(state,digestOfMessage,message,extra_state) do
+  def check_d(state,digest,message,extra_state) do
     true
   end
+
+  @doc """
+  below is a function that checks if the sequence_number in the pre-prepare message is between a low water mark sequence_lower_bound and a higher water mark sequence_upper_bound
+  """
   @spec check_n(%PBFT{},non_neg_integer(),any()) :: boolean()
   def check_n(state,uniqueSequenceNumber,extra_state) do
     true
   end
+
+  @doc """
+  below is a function that adds a messages to different logs
+  """
   @spec add_to_log(%PBFT{},atom(),any(),any()) :: no_return()
   def add_to_log(state,log_type,entry,extra_state) do
       case log_type do
@@ -163,6 +185,10 @@ defmodule PBFT do
         %{state | commit_log: [entry|state.commit_log]}
       end
   end
+
+  @doc """
+  below is a function that digests a message, returing the digested message
+  """
   @spec message_digest(%PBFT{},any(),any())::any()
   def message_digest(state, message, extra_state) do
     :digest
@@ -209,7 +235,7 @@ defmodule PBFT do
         message: message
         }
       } ->
-        raise "not implemented yet"#TODO
+        IO.puts("received PrePrepare message.")
 
       #{sender, %PBFT.PrepareMessage{}} -> #TODO
         #check signature

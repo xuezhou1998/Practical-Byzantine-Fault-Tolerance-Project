@@ -1,6 +1,6 @@
 {application,'PBFT',
              [{applications,[kernel,stdlib,elixir,logger,emulation,statistics,
-                             cloak]},
+                             cloak,ex_crypto]},
               {description,"PBFT"},
               {modules,['Elixir.PBFT','Elixir.PBFT.Client',
                         'Elixir.PBFT.CommitMessage','Elixir.PBFT.Message',
