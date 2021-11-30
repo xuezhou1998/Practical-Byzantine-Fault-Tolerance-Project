@@ -29,3 +29,5 @@ i have read the section 4 of the paper.
 i added new() methods for the messages from preprepare to reply
 
 i changed the integer type into non-neg-integer type
+
+now each utility function has documentation that explains its functionality.
