@@ -235,7 +235,7 @@ defmodule PBFT do
         message: message
         }
       } ->
-        raise "not implemented yet"#TODO
+        IO.puts("received PrePrepare message.")
 
       #{sender, %PBFT.PrepareMessage{}} -> #TODO
         #check signature
