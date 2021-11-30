@@ -29,7 +29,8 @@ defmodule Raft.MixProject do
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
       {:statistics, "~> 0.6.2"},
-      {:cloak, "1.1.1"}
+      {:cloak, "1.1.1"},
+      {:ex_crypto, "~> 0.10.0"}
     ]
   end
 end
