@@ -52,6 +52,28 @@ defmodule PBFT.Message do
   end
 end
 
+defmodule PBFT.InitializationMessage do
+  alias __MODULE__
+  @enforce_keys [
+
+    :public_key
+  ]
+  defstruct(
+    public_key: nil
+
+  )
+  @spec new(any()) ::
+          %InitializationMessage{
+            public_key: any()
+
+          }
+  def new(public_key) do
+    %InitializationMessage{
+      public_key: public_key
+    }
+  end
+end
+
 defmodule PBFT.RequestMessage do
   alias __MODULE__
   @enforce_keys [

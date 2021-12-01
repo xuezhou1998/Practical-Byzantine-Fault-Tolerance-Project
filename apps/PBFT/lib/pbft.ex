@@ -81,59 +81,39 @@ defmodule PBFT do
   below is a function that sends message to all servers other than myself
   """
   @spec broadcast_to_others(%PBFT{}, any(),any()) :: [boolean()]
-  defp broadcast_to_others(state, message, extra_state) do
+  def broadcast_to_others(state, message, extra_state) do
     me = whoami()
     state.view
     |> Enum.filter(fn pid -> pid != me end)
     |> Enum.map(fn pid -> send(pid, message) end)
   end
 
+  @spec initialization(%PBFT{}, [atom()])::no_return()
+  def initialization(state, view_list) do
+
+    ini_msg = PBFT.InitializationMessage.new(nil)
+    Enum.map(view_list ,fn x -> send(x, ini_msg) end)
+
+  end
 
   @doc """
   below is a function that validates the signature.
   """
-  @spec validation(%PBFT{is_primary: true},any() ,any()) :: boolean()
-  def validation(state,signature, extra_state) do
-    # # pretend receive the message...
-    # rsa_pub_key = state.my_public_key
-    # # break up the payload
-    # parts = String.split(payload, "|")
-    # recv_ts = Enum.fetch!(parts, 0)
-    # recv_msg_serialized = Enum.fetch!(parts, 1)
-    # {:ok, recv_sig} = Enum.fetch!(parts, 2) |> Base.url_decode64
-    # # pretend ensure the time-stamp is not too old (or from the future)...
-    # # it should probably no more than 5 minutes old, and no more than 15 minutes in the future
-    # # verify the signature
-    # {:ok, sig_valid} = ExPublicKey.verify("#{recv_ts}|#{recv_msg_serialized}", recv_sig, rsa_pub_key)
-    # assert(sig_valid)
-    # # un-serialize the JSON
-    # recv_msg_unserialized = Poison.Parser.parse!(recv_msg_serialized)
-    # # assert(msg == recv_msg_unserialized)
-    true
+  @spec validation(%PBFT{is_primary: true}, binary(),any(), atom() ,any()) :: boolean()
+  def validation(state,signature, message, sender, extra_state) do
+    public = Map.fetch!(state.public_keys_list, sender)
+    verify_result = :crypto.verify(:ecdsa, :sha256, message, signature, [public, :secp256k1])
+    verify_result
   end
 
   @doc """
   below is a function that create and sign a signature using the private key.
   """
-  @spec authentication(%PBFT{},any()) :: any()
-  def authentication(state, extra_state) do
-    # # load the RSA keys from a file on disk
-    # rsa_priv_key = private_key
-    # # create the message JSON
-    # msg = %{"name_first"=>"Chuck","name_last"=>"Norris"}
-    # # serialize the JSON
-    # msg_serialized = Poison.encode!(msg)
-    # # generate time-stamp
-    # ts = DateTime.utc_now |> DateTime.to_unix
-    # # add a time-stamp
-    # ts_msg_serialized = "#{ts}|#{msg_serialized}"
-    # # generate a secure hash using SHA256 and sign the message with the private key
-    # {:ok, signature} = ExPublicKey.sign(ts_msg_serialized, rsa_priv_key)
-    # # combine payload
-    # # payload = "#{ts}|#{msg_serialized}|#{Base.url_encode64 signature}"
-    # # payload
-    # # pretend transmit the message...
-    :signature
+  @spec authentication(%PBFT{},any(),any()) :: binary()
+  def authentication(state, message, extra_state) do
+    secret=state.my_private_key
+    sig = :crypto.sign(:ecdsa, :sha256, message, [secret, :secp256k1])
+    sig
   end
 
   @doc """
@@ -194,6 +174,8 @@ defmodule PBFT do
 
   end
 
+
+
   @doc """
   below is a function that digests a message, returing the digested message
   """
@@ -216,19 +198,59 @@ defmodule PBFT do
         signature: signature
       }} ->
         IO.puts("client request recieved.")
-        validation_result=validation(state,signature,extra_state)
-        if validation_result==true do
+        # validation_result = validation(state, signature, message, sender, extra_state)
+
+        # if validation_result==true do
           sequence_number=generate_unique_sequence(state,extra_state)
           primary_time_stamp=timestamp
           primary_view=state.view
-          primary_signature=authentication(state,extra_state)
+          primary_signature = nil
+            # authentication(state, message, extra_state)
+
           digest=message_digest(state, message, extra_state)
           pre_prepare_message=PBFT.PrePrepareMessage.new(primary_view,sequence_number,digest,primary_signature,message)
 
           broadcast_to_others(state,pre_prepare_message,extra_state)
-        end
+        # end
+
       send(sender, :ok)
       primary(state, extra_state)
+
+      {sender, %PBFT.InitializationMessage{
+        public_key: public_key
+      }}->
+        state_1 = if public_key==nil do
+          {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
+          # state.my_private_key=secret
+          # state.my_public_key=public
+          state_11 = update_state_attributes(state, :my_private_key, public)
+          state_12 = update_state_attributes(state_11, :my_public_key, secret)
+          public_key_msg = PBFT.InitializationMessage.new(public)
+          _=broadcast_to_others(state, public_key_msg, extra_state)
+          state_12
+        else
+          new_key_map = Map.put_new(state.public_keys_list, sender, public_key)
+          update_state_attributes(state, :public_keys_list, new_key_map)
+        end
+        primary(state_1, extra_state)
+
+    end
+  end
+
+  @doc """
+    the below function serves as a universal update function for state, you can add more cases
+    to it.
+  """
+  @spec update_state_attributes(%PBFT{}, atom(), any()) :: %PBFT{}
+  def update_state_attributes(state, attr_name, value) do
+    case attr_name do
+      :my_private_key->
+      %{state | my_private_key: value}
+      :my_public_key->
+        %{state | my_public_key: value}
+      :public_keys_list->
+        %{state | public_keys_list: value}
+
     end
   end
 
@@ -267,6 +289,23 @@ defmodule PBFT do
       {sender, %PBFT.RequestMessage{}} ->
         send(sender, {:redirect, state.current_primary})
         replica(state, extra_state)
+      {sender, %PBFT.InitializationMessage{
+        public_key: public_key
+      }}->
+        state_1 = if public_key==nil do
+          {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
+          # state.my_private_key=secret
+          # state.my_public_key=public
+          state_11 = update_state_attributes(state, :my_private_key, public)
+          state_12 = update_state_attributes(state_11, :my_public_key, secret)
+          public_key_msg = PBFT.InitializationMessage.new(public)
+          _=broadcast_to_others(state, public_key_msg, extra_state)
+          state_12
+        else
+          new_key_map = Map.put_new(state.public_keys_list, sender, public_key)
+          state_13 = update_state_attributes(state, :public_keys_list, new_key_map)
+        end
+        replica(state_1, extra_state)
     end
 
   end
