@@ -27,7 +27,7 @@ defmodule PBFT do
 
   )
   @spec new_configuration(
-    non_neg_integer(),
+    [atom()],
     atom(),
     non_neg_integer(),
     non_neg_integer(),
