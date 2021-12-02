@@ -29,7 +29,7 @@ defmodule PBFT do
     commit_log: []
   )
   @spec new_configuration(
-    non_neg_integer(),
+    [atom()],
     atom(),
     non_neg_integer(),
     non_neg_integer(),
@@ -74,16 +74,16 @@ defmodule PBFT do
   @doc """
   below is a function generating unique sequence,
   """
-  @spec generate_unique_sequence(%PBFT{is_primary: true}, any()) :: integer()
-  def generate_unique_sequence(state, extra_state) do
+  @spec generate_unique_sequence(%PBFT{is_primary: true}, any(), any()) :: integer()
+  def generate_unique_sequence(state, prepare_state, commit_state) do
     0
   end
 
   @doc """
   below is a function that sends message to all servers other than myself
   """
-  @spec broadcast_to_others(%PBFT{}, any(),any()) :: [boolean()]
-  defp broadcast_to_others(state, message, extra_state) do
+  @spec broadcast_to_others(%PBFT{}, any(),any(), any()) :: [boolean()]
+  defp broadcast_to_others(state, message, prepare_state, commit_state) do
     me = whoami()
     state.view
     |> Enum.filter(fn pid -> pid != me end)
@@ -94,8 +94,8 @@ defmodule PBFT do
   @doc """
   below is a function that validates the signature.
   """
-  @spec validation(%PBFT{is_primary: true},any() ,any()) :: boolean()
-  def validation(state,signature, extra_state) do
+  @spec validation(%PBFT{is_primary: true}, any(), any() ,any()) :: boolean()
+  def validation(state,signature, prepare_state, commit_state) do
     # # pretend receive the message...
     # rsa_pub_key = state.my_public_key
     # # break up the payload
@@ -117,8 +117,8 @@ defmodule PBFT do
   @doc """
   below is a function that create and sign a signature using the private key.
   """
-  @spec authentication(%PBFT{},any()) :: any()
-  def authentication(state, extra_state) do
+  @spec authentication(%PBFT{}, any(), any()) :: any()
+  def authentication(state, prepare_state, commit_state) do
     # # load the RSA keys from a file on disk
     # rsa_priv_key = private_key
     # # create the message JSON
@@ -143,7 +143,7 @@ defmodule PBFT do
   """
   @spec make_primary(%PBFT{}) :: no_return()
   def make_primary(state) do
-    primary(%{state | is_primary: true}, nil)
+    primary(%{state | is_primary: true}, %{}, %{})
   end
 
   @doc """
@@ -166,16 +166,16 @@ defmodule PBFT do
   @doc """
   below is a function that checks if the sequence_number in the pre-prepare message is between a low water mark sequence_lower_bound and a higher water mark sequence_upper_bound
   """
-  @spec check_n(%PBFT{},non_neg_integer(),any()) :: boolean()
-  def check_n(state,uniqueSequenceNumber,extra_state) do
+  @spec check_n(%PBFT{}, non_neg_integer(), any(), any()) :: boolean()
+  def check_n(state,uniqueSequenceNumber, prepare_state, commit_state) do
     true
   end
 
   @doc """
   below is a function that adds a messages to different logs
   """
-  @spec add_to_log(%PBFT{},atom(),any(),any()) :: no_return()
-  def add_to_log(state,log_type,entry,extra_state) do
+  @spec add_to_log(%PBFT{},atom(),any(),any(), any()) :: no_return()
+  def add_to_log(state,log_type,entry, prepare_state, commit_state) do
       case log_type do
       :pre_prepare->
         %{state | pre_prepare_log: [entry|state.pre_prepare_log]}
@@ -189,55 +189,98 @@ defmodule PBFT do
   @doc """
   below is a function that digests a message, returing the digested message
   """
-  @spec message_digest(%PBFT{},any(),any())::any()
-  def message_digest(state, message, extra_state) do
+  @spec message_digest(%PBFT{},any(),any(), any())::any()
+  def message_digest(state, message, prepare_state, commit_state) do
     :digest
   end
-  @spec primary(%PBFT{is_primary: true}, any()) :: no_return()
-  def primary(state, extra_state) do
+  @spec primary(%PBFT{is_primary: true}, any(), any()) :: no_return()
+  def primary(state, prepare_state, commit_state) do
     receive do
       {sender, %PBFT.RequestMessage{
         timestamp: timestamp,
         message: message,
         signature: signature
       }} ->
-        IO.puts("recieved.")
-        validation_result=validation(state,signature,extra_state)
+        IO.puts("request recieved.")
+        validation_result=validation(state, signature, prepare_state, commit_state)
         if validation_result==true do
-          sequence_number=generate_unique_sequence(state,extra_state)
+          sequence_number=generate_unique_sequence(state, prepare_state, commit_state)
+          sequence_number=timestamp
           primary_time_stamp=timestamp
-          primary_view=state.view
-          primary_signature=authentication(state,extra_state)
-          digest=message_digest(state, message, extra_state)
+          primary_view=length(state.view)
+          primary_signature=authentication(state, prepare_state, commit_state)
+          digest=message_digest(state, message, prepare_state, commit_state)
           pre_prepare_message=PBFT.PrePrepareMessage.new(primary_view,sequence_number,digest,primary_signature,message)
 
-          broadcast_to_others(state,pre_prepare_message,extra_state)
+          broadcast_to_others(state,pre_prepare_message,prepare_state, commit_state)
         end
       send(sender, :ok)
-      primary(state, extra_state)
+      primary(state, prepare_state, commit_state)
+      {sender, %PBFT.PrepareMessage{
+        view: view_number,
+        sequence_number: sequence_number,
+        digest: digest,
+        identity: id,
+        signature: signature,
+        }
+      } -> 
+        IO.puts("#{whoami()} received Prepare message: [#{view_number}, #{sequence_number}, #{digest}, #{id}, #{signature}].")
+        if prepare_state[sequence_number] == nil do
+          prepare_state = Map.put(prepare_state, sequence_number, [id])
+          IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
+          primary(state, prepare_state, commit_state)
+        else
+          prepare_state = Map.put(prepare_state, sequence_number, Enum.uniq([id] ++ prepare_state[sequence_number]))
+          IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
+          primary(state, prepare_state, commit_state)
+        end
+        primary(state, prepare_state, commit_state)
     end
   end
 
   @spec make_replica(%PBFT{}) :: no_return()
   def make_replica(state) do
-    replica( %{state | is_primary: false}, nil)
+    replica(%{state | is_primary: false}, %{}, %{})
   end
 
-  @spec replica(%PBFT{is_primary: false}, any()) :: no_return()
-  def replica(state, extra_state) do
+  @spec replica(%PBFT{is_primary: false}, any(), any()) :: no_return()
+  def replica(state, prepare_state, commit_state) do
     #TODO: add timer and view_changing logic
     receive do
       {sender, %PBFT.PrePrepareMessage{
-        view: view,
+        view: view_number,
         sequence_number: sequence_number,
         digest: digest,
         signature: signature,
         message: message
         }
       } ->
-        IO.puts("received PrePrepare message.")
+        IO.puts("#{whoami()} received PrePrepare message: [#{view_number}, #{sequence_number}, #{digest}, #{signature}].")
+        prepare_message=PBFT.PrepareMessage.new(view_number, sequence_number, digest, whoami(), signature)
+        broadcast_to_others(state,prepare_message, prepare_state, commit_state)
+        replica(state, prepare_state, commit_state)
+        #prepare_message=PBFT.PrepareMessage.new(primary_view,sequence_number,digest,primary_signature,message)
 
-      #{sender, %PBFT.PrepareMessage{}} -> #TODO
+      {sender, %PBFT.PrepareMessage{
+        view: view_number,
+        sequence_number: sequence_number,
+        digest: digest,
+        identity: id,
+        signature: signature,
+        }
+      } -> 
+        IO.puts("#{whoami()} received Prepare message: [#{view_number}, #{sequence_number}, #{digest}, #{id}, #{signature}].")
+        if prepare_state[sequence_number] == nil do
+          prepare_state = Map.put(prepare_state, sequence_number, [id])
+          IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
+          replica(state, prepare_state, commit_state)
+        else
+          prepare_state = Map.put(prepare_state, sequence_number, Enum.uniq([id] ++ prepare_state[sequence_number]))
+          IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
+          replica(state, prepare_state, commit_state)
+        end
+        replica(state, prepare_state, commit_state)
+
         #check signature
         #check previous log
         #check PBFT logic
@@ -252,7 +295,7 @@ defmodule PBFT do
         #send reply
       {sender, %PBFT.RequestMessage{}} ->
         send(sender, {:redirect, state.current_primary})
-        replica(state, extra_state)
+        replica(state, prepare_state, commit_state)
     end
 
   end
