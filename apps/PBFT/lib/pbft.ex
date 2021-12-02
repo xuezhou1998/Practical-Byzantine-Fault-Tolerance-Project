@@ -222,7 +222,7 @@ defmodule PBFT do
         signature: signature,
         }
       } ->
-        # IO.puts("#{whoami()} received Prepare message: [#{view_number}, #{sequence_number}, #{digest}, #{id}, #{signature}].")
+        IO.puts("#{whoami()} received Prepare message: [#{view_number}, #{sequence_number}, #{inspect(digest)}, #{id}, #{inspect(signature)}].")
         if prepare_state[sequence_number] == nil do
           prepare_state = Map.put(prepare_state, sequence_number, [id])
           IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
@@ -263,10 +263,13 @@ defmodule PBFT do
           state_12 = update_state_attributes(state_11, :my_public_key, secret)
           public_key_msg = PBFT.InitializationMessage.new(public)
           _=broadcast_to_others(state, public_key_msg, prepare_state,commit_state)
+
           state_12
         else
           new_key_map = Map.put_new(state.public_keys_list, sender, public_key)
+          IO.puts("received and stored the public key #{inspect(state.public_keys_list)}")
           update_state_attributes(state, :public_keys_list, new_key_map)
+
         end
         primary(state_1, prepare_state,commit_state)
 
@@ -307,7 +310,7 @@ defmodule PBFT do
         message: message
         }
       } ->
-        # IO.puts("#{whoami()} received PrePrepare message: [#{view_number}, #{sequence_number}, #{digest}, #{signature}].")
+        IO.puts("#{whoami()} received Prepare message: [#{view_number}, #{sequence_number}, #{inspect(digest)}, #{inspect(signature)}, #{inspect(message)}].")
         prepare_message=PBFT.PrepareMessage.new(view_number, sequence_number, digest, whoami(), signature)
         broadcast_to_others(state,prepare_message, prepare_state, commit_state)
         replica(state, prepare_state, commit_state)
@@ -321,7 +324,7 @@ defmodule PBFT do
         signature: signature,
         }
       } ->
-        # IO.puts("#{whoami()} received Prepare message: [#{view_number}, #{sequence_number}, #{digest}, #{id}, #{signature}].")
+        IO.puts("#{whoami()} received Prepare message: [#{view_number}, #{sequence_number}, #{inspect(digest)}, #{id}, #{inspect(signature)}].")
         if prepare_state[sequence_number] == nil do
           prepare_state = Map.put(prepare_state, sequence_number, [id])
           IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
@@ -362,6 +365,7 @@ defmodule PBFT do
           state_12
         else
           new_key_map = Map.put_new(state.public_keys_list, sender, public_key)
+          IO.puts("received and stored the public key #{inspect(state.public_keys_list)}")
           state_13 = update_state_attributes(state, :public_keys_list, new_key_map)
         end
         replica(state_1, prepare_state, commit_state)
@@ -395,7 +399,7 @@ defmodule PBFT.Client do
     send(primary, %PBFT.RequestMessage{timestamp: client.timestamp,
                                       message: PBFT.Message.new_account(name, amount, client_pid, client.timestamp),
                                       signature: nil})
-    IO.puts("Message have been sent to #{client.primary}.")
+    IO.puts("Message have been sent to #{inspect(client.primary)}.")
     receive do
       {_, :ok} ->
         client
@@ -411,7 +415,7 @@ defmodule PBFT.Client do
     send(primary, %PBFT.RequestMessage{timestamp: client.timestamp,
                                       message: PBFT.Message.update_balance(name, amount, client_pid, client.timestamp),
                                       signature: nil})
-    IO.puts("Message have been sent to #{client.primary}.")
+    IO.puts("Message have been sent to #{inspect(client.primary)}.")
     receive do
       {_, :ok} ->
         client
