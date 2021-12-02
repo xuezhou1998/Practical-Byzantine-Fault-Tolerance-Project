@@ -80,20 +80,45 @@ defmodule PBFT do
   @doc """
   below is a function that sends message to all servers other than myself
   """
-  @spec broadcast_to_others(%PBFT{}, any(),any(), any()) :: [boolean()]
-  defp broadcast_to_others(state, message, prepare_state, commit_state) do
+  @spec broadcast_to_others(any(), any(),any(), any(), any()) :: [boolean()]
+  def broadcast_to_others(state, message, prepare_state, commit_state, view \\ nil) do
     me = whoami()
-    state.view
-    |> Enum.filter(fn pid -> pid != me end)
-    |> Enum.map(fn pid -> send(pid, message) end)
+    if view == nil do
+      state.view
+      |> Enum.filter(fn pid -> pid != me end)
+      |> Enum.map(fn pid -> send(pid, message) end)
+    else
+      view
+      |> Enum.filter(fn pid -> pid != me end)
+      |> Enum.map(fn pid -> send(pid, message) end)
+    end
+
   end
 
-  @spec initialization(%PBFT{}, [atom()])::no_return()
+  @spec initialization(%PBFT{}, [atom()])::[atom()]
   def initialization(state, view_list) do
 
-    ini_msg = PBFT.InitializationMessage.new(nil)
-    Enum.map(view_list ,fn x -> send(x, ini_msg) end)
+      ini_msg = PBFT.InitializationMessage.new(nil)
+      # Enum.map(view_list ,fn x -> send(x, ini_msg) end)
 
+      view_list
+        |> Enum.map(fn x ->
+          send(x, ini_msg)
+        end)
+
+      queues =
+        view_list
+        |> Enum.map(fn x ->
+          # send(x, ini_msg)
+          receive do
+            {sender, s} ->
+              # IO.puts("ini has received from #{x}")
+              {sender, s}
+          end
+        end)
+      IO.puts("this is all keys #{inspect(queues)}")
+
+      Enum.into(queues, %{})
   end
 
   @doc """
@@ -109,7 +134,7 @@ defmodule PBFT do
   @doc """
   below is a function that create and sign a signature using the private key.
   """
-  @spec authentication(%PBFT{},any(),any(),any()) :: binary()
+  @spec authentication(any(),any(),any(),any()) :: binary()
   def authentication(state, message, prepare_state, commit_state) do
     secret=state.my_private_key
     sig = :crypto.sign(:ecdsa, :sha256, message, [secret, :secp256k1])
@@ -179,7 +204,7 @@ defmodule PBFT do
   @doc """
   below is a function that digests a message, returing the digested message
   """
-  @spec message_digest(%PBFT{},%PBFT.Message{},any(),any()) :: binary()
+  @spec message_digest(any(),%PBFT.Message{},any(),any()) :: binary()
   def message_digest(_state, message, prepare_state, commit_state) do
     msg_string=
     to_string(message.op) <>
@@ -191,6 +216,9 @@ defmodule PBFT do
   end
   @spec primary(%PBFT{is_primary: true}, any(), any()) :: no_return()
   def primary(state, prepare_state, commit_state) do
+    # if state.my_public_key != nil do
+    #   send(sender, state.my_public_key)
+    # end
     receive do
       {sender, %PBFT.RequestMessage{
         timestamp: timestamp,
@@ -198,16 +226,18 @@ defmodule PBFT do
         signature: signature
       }} ->
         IO.puts("request recieved.")
+        digest=message_digest(state, message, prepare_state, commit_state)
         validation_result=true
-          # validation(state, signature,message,sender, prepare_state, commit_state)
+          # validation(state, signature,digest,sender, prepare_state, commit_state)
         if validation_result==true do
-          sequence_number=generate_unique_sequence(state, prepare_state, commit_state)
+          # sequence_number=generate_unique_sequence(state, prepare_state, commit_state)
           sequence_number=timestamp
           primary_time_stamp=timestamp
           primary_view=length(state.view)
-          primary_signature=:signature
-            # authentication(state, message,prepare_state, commit_state)
-          digest=message_digest(state, message, prepare_state, commit_state)
+
+
+          primary_signature=nil
+            # authentication(state, digest,prepare_state, commit_state)
           pre_prepare_message=PBFT.PrePrepareMessage.new(primary_view,sequence_number,digest,primary_signature,message)
 
           broadcast_to_others(state,pre_prepare_message,prepare_state, commit_state)
@@ -263,12 +293,22 @@ defmodule PBFT do
           state_12 = update_state_attributes(state_11, :my_public_key, secret)
           public_key_msg = PBFT.InitializationMessage.new(public)
           _=broadcast_to_others(state, public_key_msg, prepare_state,commit_state)
-
+          _=IO.puts("#{whoami()} has received ini msg")
+          _=send(sender, public)
           state_12
         else
           new_key_map = Map.put_new(state.public_keys_list, sender, public_key)
-          IO.puts("received and stored the public key #{inspect(state.public_keys_list)}")
-          update_state_attributes(state, :public_keys_list, new_key_map)
+
+          # IO.puts("received and stored the public key #{inspect(state.public_keys_list)}")
+          # update_state_attributes(state, :public_keys_list, new_key_map)
+          state_13 = update_state_attributes(state, :public_keys_list, new_key_map)
+          IO.puts("received and stored the public key #{inspect(state_13.public_keys_list)}")
+          # if length(state.public_keys_list) == state.view do
+          if state.my_public_key != nil do
+            send(sender, state.my_public_key)
+          end
+          # end
+          state_13
 
         end
         primary(state_1, prepare_state,commit_state)
@@ -300,6 +340,9 @@ defmodule PBFT do
 
   @spec replica(%PBFT{is_primary: false}, any(), any()) :: no_return()
   def replica(state, prepare_state, commit_state) do
+    # if state.my_public_key != nil do
+    #   send(sender, state.my_public_key)
+    # end
     #TODO: add timer and view_changing logic
     receive do
       {sender, %PBFT.PrePrepareMessage{
@@ -362,11 +405,17 @@ defmodule PBFT do
           state_12 = update_state_attributes(state_11, :my_public_key, secret)
           public_key_msg = PBFT.InitializationMessage.new(public)
           _=broadcast_to_others(state, public_key_msg, prepare_state, commit_state)
+          _=send(sender, public)
+          _=IO.puts("#{whoami()} has received ini msg")
           state_12
         else
           new_key_map = Map.put_new(state.public_keys_list, sender, public_key)
-          IO.puts("received and stored the public key #{inspect(state.public_keys_list)}")
           state_13 = update_state_attributes(state, :public_keys_list, new_key_map)
+          IO.puts("received and stored the public key #{inspect(state_13.public_keys_list)}")
+          if state.my_public_key != nil do
+            send(sender, state.my_public_key)
+          end
+          state_13
         end
         replica(state_1, prepare_state, commit_state)
     end
@@ -382,12 +431,21 @@ defmodule PBFT.Client do
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
 
   alias __MODULE__
-  @enforce_keys [:primary, :timestamp]
-  defstruct(primary: nil, timestamp: 0)
+  @enforce_keys [:primary, :timestamp, :public_keys_list, :my_public_key, :my_private_key]
+  defstruct(primary: nil, timestamp: 0, public_keys_list: nil, my_public_key: nil, my_private_key: nil)
 
   @spec new_client(atom()) :: %Client{primary: atom(), timestamp: integer()}
   def new_client(member) do
-    %Client{primary: member, timestamp: 0}
+    %Client{primary: member, timestamp: 0, public_keys_list: Map.new(), my_public_key: nil, my_private_key: nil}
+  end
+
+  @spec set_keys(%Client{}, [atom()], any()):: %Client{}
+  def set_keys(state, view, public_keys_list) do
+    {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
+
+    public_key_msg = PBFT.InitializationMessage.new(public)
+    _=PBFT.broadcast_to_others(nil, public_key_msg, nil, nil, view)
+    %{state | public_keys_list: public_keys_list, my_public_key: public, my_private_key: secret}
   end
 
   @spec new_account(%Client{}, any(), integer(), atom()) :: {%Client{}}
@@ -396,9 +454,13 @@ defmodule PBFT.Client do
     IO.puts("client timestamp is #{client.timestamp}.")
     client = %{client | timestamp: client.timestamp + 1}
     IO.puts("client timestamp is #{client.timestamp}.")
+    message=PBFT.Message.new_account(name, amount, client_pid, client.timestamp)
+    message_d = PBFT.message_digest(nil, message, nil, nil)
+    sig = nil
+      # PBFT.authentication(client, message_d,nil,nil)
     send(primary, %PBFT.RequestMessage{timestamp: client.timestamp,
-                                      message: PBFT.Message.new_account(name, amount, client_pid, client.timestamp),
-                                      signature: nil})
+                                      message: message,
+                                      signature: sig})
     IO.puts("Message have been sent to #{inspect(client.primary)}.")
     receive do
       {_, :ok} ->
@@ -412,9 +474,13 @@ defmodule PBFT.Client do
     IO.puts("client timestamp is #{client.timestamp}.")
     client = %{client | timestamp: client.timestamp + 1}
     IO.puts("client timestamp is #{client.timestamp}.")
+    message=PBFT.Message.update_balance(name, amount, client_pid, client.timestamp)
+    message_d = PBFT.message_digest(nil, message, nil, nil)
+    sig = nil
+      # PBFT.authentication(client, message_d,nil,nil)
     send(primary, %PBFT.RequestMessage{timestamp: client.timestamp,
-                                      message: PBFT.Message.update_balance(name, amount, client_pid, client.timestamp),
-                                      signature: nil})
+                                      message: message,
+                                      signature: sig})
     IO.puts("Message have been sent to #{inspect(client.primary)}.")
     receive do
       {_, :ok} ->
