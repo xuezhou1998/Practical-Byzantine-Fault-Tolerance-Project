@@ -145,7 +145,6 @@ defmodule PBFT.PrepareMessage do
       digest: digest,
       identity: identity,
       signature: signature
-
     }
   end
 end
