@@ -17,9 +17,9 @@ defmodule PBFT.Message do
     client: nil,
     timestamp: 0
   )
-  @spec new_account(any(), integer(), atom(), integer()) :: %Message{
+  @spec new_account(atom(), integer(), atom(), integer()) :: %Message{
             op: :newaccount,
-            name: any(),
+            name: atom(),
             amount: integer(),
             client: atom(),
             timestamp: non_neg_integer()
@@ -48,6 +48,28 @@ defmodule PBFT.Message do
       amount: a,
       client: c,
       timestamp: t
+    }
+  end
+end
+
+defmodule PBFT.InitializationMessage do
+  alias __MODULE__
+  @enforce_keys [
+
+    :public_key
+  ]
+  defstruct(
+    public_key: nil
+
+  )
+  @spec new(any()) ::
+          %InitializationMessage{
+            public_key: any()
+
+          }
+  def new(public_key) do
+    %InitializationMessage{
+      public_key: public_key
     }
   end
 end
