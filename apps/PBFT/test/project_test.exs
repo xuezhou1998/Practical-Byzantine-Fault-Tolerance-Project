@@ -45,6 +45,7 @@ defmodule ProjectTest do
         client2= PBFT.Client.set_keys(client, my_view, key_map)
         client3 = PBFT.Client.new_account(client2, "Tom", 1000, whoami())
         client4 = PBFT.Client.update_balance(client3, "Tom", 400, whoami())
+        client44 = PBFT.Client.update_balance_test(client4, "Tom", 40000, whoami())
         receive do
         after
           5_000 -> true
