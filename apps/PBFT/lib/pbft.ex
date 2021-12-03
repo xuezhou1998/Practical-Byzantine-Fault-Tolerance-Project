@@ -3,6 +3,7 @@ defmodule PBFT do
   import Kernel,
     except: [spawn: 3, spawn: 1, spawn_link: 1, spawn_link: 3, send: 2]
     use Cloak.Vault, otp_app: :my_app
+    use ExCrypto, ExPublicKey
   require Fuzzers
   require Logger
   defstruct(
@@ -33,8 +34,8 @@ defmodule PBFT do
     non_neg_integer(),
     non_neg_integer(),
     [any()],
-    any(),
-    any()
+    binary(),
+    binary()
 
   ) :: %PBFT{}
   def new_configuration(
@@ -97,15 +98,12 @@ defmodule PBFT do
 
   @spec initialization(%PBFT{}, [atom()])::[atom()]
   def initialization(state, view_list) do
-
       ini_msg = PBFT.InitializationMessage.new(nil)
       # Enum.map(view_list ,fn x -> send(x, ini_msg) end)
-
       view_list
         |> Enum.map(fn x ->
           send(x, ini_msg)
         end)
-
       queues =
         view_list
         |> Enum.map(fn x ->
@@ -127,17 +125,26 @@ defmodule PBFT do
   @spec validation(%PBFT{}, binary(),any(), atom() ,any(),any()) :: boolean()
   def validation(state,signature, message, sender, prepare_state, commit_state) do
     public = Map.fetch!(state.public_keys_list, sender)
-    verify_result = :crypto.verify(:ecdsa, :sha256, message, signature, [public, :secp256k1])
+    # public = Base.decode64!(public_r)
+    # public = public_r
+    # verify_result = :crypto.verify(:ecdsa, :sha256, message, signature, [public, :secp256k1])
+    {_, verify_result} = ExPublicKey.verify(message, signature, public)
+    IO.puts("validation result is #{inspect(verify_result)}")
     verify_result
   end
 
   @doc """
   below is a function that create and sign a signature using the private key.
   """
-  @spec authentication(any(),any(),any(),any()) :: binary()
+  @spec authentication(any(),any(),any(),any()) :: any()
   def authentication(state, message, prepare_state, commit_state) do
     secret=state.my_private_key
-    sig = :crypto.sign(:ecdsa, :sha256, message, [secret, :secp256k1])
+    # secret = Base.decode64!(secret_r)
+
+    IO.puts("this is secret #{inspect(secret, limit: :infinity)}")
+    # sig = :crypto.sign(:ecdsa, :sha256, message, [secret, :secp256k1])
+    {_, sig} = ExPublicKey.sign(message, secret)
+    IO.puts("authentication result is #{inspect(sig)}")
     sig
   end
 
@@ -214,6 +221,16 @@ defmodule PBFT do
     to_string(message.timestamp)
     :crypto.hash(:sha, msg_string)
   end
+  @spec message_flatten(any(),%PBFT.Message{},any(),any()) :: String.t()
+  def message_flatten(_state, message, prepare_state, commit_state) do
+    msg_string=
+    to_string(message.op) <>
+    to_string(message.name) <>
+    to_string(message.amount) <>
+    to_string(message.client) <>
+    to_string(message.timestamp)
+    msg_string
+  end
   @spec primary(%PBFT{is_primary: true}, any(), any()) :: no_return()
   def primary(state, prepare_state, commit_state) do
     # if state.my_public_key != nil do
@@ -226,18 +243,18 @@ defmodule PBFT do
         signature: signature
       }} ->
         IO.puts("request recieved.")
-        digest=message_digest(state, message, prepare_state, commit_state)
-        validation_result=true
-          # validation(state, signature,digest,sender, prepare_state, commit_state)
+        message_f=message_flatten(state, message, nil, nil)
+        validation_result=validation(state, signature,message_f,sender, prepare_state, commit_state)
+
         if validation_result==true do
+          IO.puts("request message signature validation success")
           # sequence_number=generate_unique_sequence(state, prepare_state, commit_state)
           sequence_number=timestamp
           primary_time_stamp=timestamp
           primary_view=length(state.view)
+          digest=message_digest(state, message, prepare_state, commit_state)
 
-
-          primary_signature=nil
-            # authentication(state, digest,prepare_state, commit_state)
+          primary_signature=authentication(state, message_f,prepare_state, commit_state)
           pre_prepare_message=PBFT.PrePrepareMessage.new(primary_view,sequence_number,digest,primary_signature,message)
 
           broadcast_to_others(state,pre_prepare_message,prepare_state, commit_state)
@@ -286,9 +303,12 @@ defmodule PBFT do
         public_key: public_key
       }}->
         state_1 = if public_key==nil do
-          {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
-          # state.my_private_key=secret
-          # state.my_public_key=public
+          # {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
+          {_,secret} = ExPublicKey.generate_key()
+          {_,public} = ExPublicKey.public_key_from_private_key(secret)
+          # public = Base.encode64(public_r)
+          # secret = Base.encode64(secret_r)
+
           state_11 = update_state_attributes(state, :my_private_key, public)
           state_12 = update_state_attributes(state_11, :my_public_key, secret)
           public_key_msg = PBFT.InitializationMessage.new(public)
@@ -302,7 +322,8 @@ defmodule PBFT do
           # IO.puts("received and stored the public key #{inspect(state.public_keys_list)}")
           # update_state_attributes(state, :public_keys_list, new_key_map)
           state_13 = update_state_attributes(state, :public_keys_list, new_key_map)
-          IO.puts("received and stored the public key #{inspect(state_13.public_keys_list)}")
+          IO.puts("received and stored the public key #{inspect(Map.keys(state_13.public_keys_list))}")
+
           # if length(state.public_keys_list) == state.view do
           if state.my_public_key != nil do
             send(sender, state.my_public_key)
@@ -398,9 +419,9 @@ defmodule PBFT do
         public_key: public_key
       }}->
         state_1 = if public_key==nil do
-          {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
-          # state.my_private_key=secret
-          # state.my_public_key=public
+
+          {_,secret} = ExPublicKey.generate_key()
+          {_,public} = ExPublicKey.public_key_from_private_key(secret)
           state_11 = update_state_attributes(state, :my_private_key, public)
           state_12 = update_state_attributes(state_11, :my_public_key, secret)
           public_key_msg = PBFT.InitializationMessage.new(public)
@@ -411,7 +432,7 @@ defmodule PBFT do
         else
           new_key_map = Map.put_new(state.public_keys_list, sender, public_key)
           state_13 = update_state_attributes(state, :public_keys_list, new_key_map)
-          IO.puts("received and stored the public key #{inspect(state_13.public_keys_list)}")
+          IO.puts("received and stored the public key #{inspect(Map.keys(state_13.public_keys_list))}")
           if state.my_public_key != nil do
             send(sender, state.my_public_key)
           end
@@ -441,8 +462,11 @@ defmodule PBFT.Client do
 
   @spec set_keys(%Client{}, [atom()], any()):: %Client{}
   def set_keys(state, view, public_keys_list) do
-    {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
-
+    # {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
+          # public = Base.encode64(public_r)
+          # secret = Base.encode64(secret_r)
+          {_,secret} = ExPublicKey.generate_key()
+          {_,public} = ExPublicKey.public_key_from_private_key(secret)
     public_key_msg = PBFT.InitializationMessage.new(public)
     _=PBFT.broadcast_to_others(nil, public_key_msg, nil, nil, view)
     %{state | public_keys_list: public_keys_list, my_public_key: public, my_private_key: secret}
@@ -455,9 +479,8 @@ defmodule PBFT.Client do
     client = %{client | timestamp: client.timestamp + 1}
     IO.puts("client timestamp is #{client.timestamp}.")
     message=PBFT.Message.new_account(name, amount, client_pid, client.timestamp)
-    message_d = PBFT.message_digest(nil, message, nil, nil)
-    sig = nil
-      # PBFT.authentication(client, message_d,nil,nil)
+    message_f = PBFT.message_flatten(nil, message, nil, nil)
+    sig = PBFT.authentication(client, message_f,nil,nil)
     send(primary, %PBFT.RequestMessage{timestamp: client.timestamp,
                                       message: message,
                                       signature: sig})
@@ -475,9 +498,28 @@ defmodule PBFT.Client do
     client = %{client | timestamp: client.timestamp + 1}
     IO.puts("client timestamp is #{client.timestamp}.")
     message=PBFT.Message.update_balance(name, amount, client_pid, client.timestamp)
-    message_d = PBFT.message_digest(nil, message, nil, nil)
-    sig = nil
-      # PBFT.authentication(client, message_d,nil,nil)
+    message_f = PBFT.message_flatten(nil, message, nil, nil)
+    sig = PBFT.authentication(client, message_f,nil,nil)
+    send(primary, %PBFT.RequestMessage{timestamp: client.timestamp,
+                                      message: message,
+                                      signature: sig})
+    IO.puts("Message have been sent to #{inspect(client.primary)}.")
+    receive do
+      {_, :ok} ->
+        client
+    end
+  end
+  @spec update_balance_test(%Client{}, any(), integer(), atom()) :: {%Client{}}
+  def update_balance_test(client, name, amount, client_pid) do
+    primary = client.primary
+    IO.puts("client timestamp is #{client.timestamp}.")
+    client = %{client | timestamp: client.timestamp + 1}
+    IO.puts("client timestamp is #{client.timestamp}.")
+    message=PBFT.Message.update_balance(name, amount, client_pid, client.timestamp)
+    message_f = PBFT.message_flatten(nil, message, nil, nil)
+    # sig = PBFT.authentication(client, message_f,nil,nil)
+    {_, foreign_priv}=ExPublicKey.generate_key()
+    {_, sig} = ExPublicKey.sign(message_f, foreign_priv)
     send(primary, %PBFT.RequestMessage{timestamp: client.timestamp,
                                       message: message,
                                       signature: sig})
