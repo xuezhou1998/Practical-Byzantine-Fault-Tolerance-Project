@@ -275,12 +275,72 @@ defmodule PBFT do
           IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
           primary(state, prepare_state, commit_state)
         else
+          origin_length = length(prepare_state[sequence_number])
           prepare_state = Map.put(prepare_state, sequence_number, Enum.uniq([id] ++ prepare_state[sequence_number]))
           IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
+          if origin_length * 3 <= length(state.view) and length(prepare_state[sequence_number]) * 3 > length(state.view) do
+            IO.puts("#{whoami()} is sending commit message for #{sequence_number}")
+            commit_message = PBFT.CommitMessage.new(view_number, sequence_number, digest, whoami(), signature)
+            broadcast_to_others(state,commit_message, prepare_state, commit_state)
+          end
           primary(state, prepare_state, commit_state)
         end
         primary(state, prepare_state, commit_state)
-        IO.puts("client request recieved.")
+
+        {sender, %PBFT.CommitMessage{
+          view: view_number,
+          sequence_number: sequence_number,
+          digest: digest,
+          identity: id,
+          signature: signature,
+          }
+        } -> 
+          IO.puts("#{whoami()} received Commit message: [#{view_number}, #{sequence_number}, #{inspect(digest)}, #{id}, #{inspect(signature)}].")
+          if commit_state[sequence_number] == nil do
+            commit_state = Map.put(commit_state, sequence_number, [id])
+            IO.puts("#{whoami()} has received #{length(commit_state[sequence_number])} commit messages for #{sequence_number}.")
+            primary(state, prepare_state, commit_state)
+          else
+            origin_length = length(commit_state[sequence_number])
+            commit_state = Map.put(commit_state, sequence_number, Enum.uniq([id] ++ commit_state[sequence_number]))
+            IO.puts("#{whoami()} has received #{length(commit_state[sequence_number])} commit messages for #{sequence_number}.")
+            if origin_length * 3 <= length(state.view) and length(commit_state[sequence_number]) * 3 > length(state.view) do
+              IO.puts("#{whoami()} is commiting message #{sequence_number}")
+            end
+            primary(state, prepare_state, commit_state)
+          end
+          primary(state, prepare_state, commit_state)
+        
+        
+        {sender, %PBFT.InitializationMessage{
+          public_key: public_key
+        }}->
+          state_1 = if public_key==nil do
+            {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
+            # state.my_private_key=secret
+            # state.my_public_key=public
+            state_11 = update_state_attributes(state, :my_private_key, public)
+            state_12 = update_state_attributes(state_11, :my_public_key, secret)
+            public_key_msg = PBFT.InitializationMessage.new(public)
+            _=broadcast_to_others(state, public_key_msg, prepare_state,commit_state)
+            _=IO.puts("#{whoami()} has received ini msg")
+            _=send(sender, public)
+            state_12
+          else
+            new_key_map = Map.put_new(state.public_keys_list, sender, public_key)
+  
+            # IO.puts("received and stored the public key #{inspect(state.public_keys_list)}")
+            # update_state_attributes(state, :public_keys_list, new_key_map)
+            state_13 = update_state_attributes(state, :public_keys_list, new_key_map)
+            IO.puts("received and stored the public key #{inspect(state_13.public_keys_list)}")
+            # if length(state.public_keys_list) == state.view do
+            if state.my_public_key != nil do
+              send(sender, state.my_public_key)
+            end
+            # end
+            state_13
+          end
+          primary(state_1, prepare_state,commit_state)
         # # validation_result = validation(state, signature, message, sender, extra_state)
 
         # # if validation_result==true do
@@ -298,42 +358,6 @@ defmodule PBFT do
 
       # send(sender, :ok)
       # primary(state, extra_state)
-
-      {sender, %PBFT.InitializationMessage{
-        public_key: public_key
-      }}->
-        state_1 = if public_key==nil do
-          # {public, secret} = :crypto.generate_key(:ecdh, :secp256k1)
-          {_,secret} = ExPublicKey.generate_key()
-          {_,public} = ExPublicKey.public_key_from_private_key(secret)
-          # public = Base.encode64(public_r)
-          # secret = Base.encode64(secret_r)
-
-          state_11 = update_state_attributes(state, :my_private_key, public)
-          state_12 = update_state_attributes(state_11, :my_public_key, secret)
-          public_key_msg = PBFT.InitializationMessage.new(public)
-          _=broadcast_to_others(state, public_key_msg, prepare_state,commit_state)
-          _=IO.puts("#{whoami()} has received ini msg")
-          _=send(sender, public)
-          state_12
-        else
-          new_key_map = Map.put_new(state.public_keys_list, sender, public_key)
-
-          # IO.puts("received and stored the public key #{inspect(state.public_keys_list)}")
-          # update_state_attributes(state, :public_keys_list, new_key_map)
-          state_13 = update_state_attributes(state, :public_keys_list, new_key_map)
-          IO.puts("received and stored the public key #{inspect(Map.keys(state_13.public_keys_list))}")
-
-          # if length(state.public_keys_list) == state.view do
-          if state.my_public_key != nil do
-            send(sender, state.my_public_key)
-          end
-          # end
-          state_13
-
-        end
-        primary(state_1, prepare_state,commit_state)
-
     end
   end
 
@@ -394,8 +418,38 @@ defmodule PBFT do
           IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
           replica(state, prepare_state, commit_state)
         else
+          origin_length = length(prepare_state[sequence_number])
           prepare_state = Map.put(prepare_state, sequence_number, Enum.uniq([id] ++ prepare_state[sequence_number]))
           IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
+          if origin_length * 3 <= length(state.view) and length(prepare_state[sequence_number]) * 3 > length(state.view) do
+            IO.puts("#{whoami()} is sending commit message for #{sequence_number}")
+            commit_message = PBFT.CommitMessage.new(view_number, sequence_number, digest, whoami(), signature)
+            broadcast_to_others(state,commit_message, prepare_state, commit_state)
+          end
+          replica(state, prepare_state, commit_state)
+        end
+        replica(state, prepare_state, commit_state)
+
+      {sender, %PBFT.CommitMessage{
+        view: view_number,
+        sequence_number: sequence_number,
+        digest: digest,
+        identity: id,
+        signature: signature,
+        }
+      } -> 
+        IO.puts("#{whoami()} received Commit message: [#{view_number}, #{sequence_number}, #{inspect(digest)}, #{id}, #{inspect(signature)}].")
+        if commit_state[sequence_number] == nil do
+          commit_state = Map.put(commit_state, sequence_number, [id])
+          IO.puts("#{whoami()} has received #{length(commit_state[sequence_number])} commit messages for #{sequence_number}.")
+          replica(state, prepare_state, commit_state)
+        else
+          origin_length = length(commit_state[sequence_number])
+          commit_state = Map.put(commit_state, sequence_number, Enum.uniq([id] ++ commit_state[sequence_number]))
+          IO.puts("#{whoami()} has received #{length(commit_state[sequence_number])} commit messages for #{sequence_number}.")
+          if origin_length * 3 <= length(state.view) and length(commit_state[sequence_number]) * 3 > length(state.view) do
+            IO.puts("#{whoami()} is commiting message #{sequence_number}")
+          end
           replica(state, prepare_state, commit_state)
         end
         replica(state, prepare_state, commit_state)
