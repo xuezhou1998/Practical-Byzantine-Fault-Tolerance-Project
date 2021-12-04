@@ -11,13 +11,13 @@ defmodule PBFT do
     current_primary: nil,
     heartbeat_timeout: nil,
     heartbeat_timer: nil,
-    log: [],
+    log: %{},
     commit_index: 0,
     is_traitor: nil,
     is_primary: nil,
     next_index: nil,
     match_index: nil,
-    database: nil,
+    database: %{},
     sequence_set: nil,
     sequence_upper_bound: nil,
     sequence_lower_bound: nil,
@@ -52,7 +52,7 @@ defmodule PBFT do
     view: view,
     current_primary: primary,
     heartbeat_timeout: heartbeat_timeout,
-    log: [],
+    log: %{},
     is_primary: false,
     database: %{}, # WDT: creation of a empty map, database[username] = amount of money, replace the queue in raft.
     sequence_set: MapSet.new(),
@@ -199,11 +199,21 @@ defmodule PBFT do
   @doc """
   below is a function that adds a messages to different logs
   """
-  @spec add_to_log(%PBFT{},any(),any(),any()) :: no_return()
-  def add_to_log(state,entry,prepare_state, commit_state) do
-
-      %{state | log: [entry|state.log]}
-
+  @spec local_commit(%PBFT{},non_neg_integer()) :: %PBFT{}
+  def local_commit(state, sequence_number) do
+    msg = %PBFT.Message{
+      op: op,
+      name: name,
+      amount: amount,
+      client: client,
+      timestamp: timestamp
+    } = state.log[sequence_number]
+    if op == :newaccount do
+      %{state | database: Map.put(state.database, name, amount)}
+    else
+      balance = state.database[name]
+      %{state | database: Map.put(state.database, name, balance + amount)}
+    end
   end
 
 
@@ -255,12 +265,16 @@ defmodule PBFT do
           digest=message_digest(state, message, prepare_state, commit_state)
 
           primary_signature=authentication(state, message_f,prepare_state, commit_state)
-          pre_prepare_message=PBFT.PrePrepareMessage.new(primary_view,sequence_number,digest,primary_signature,message)
 
+          state = %{state | log: Map.put(state.log, sequence_number, message)}
+          pre_prepare_message=PBFT.PrePrepareMessage.new(primary_view,sequence_number,digest,primary_signature,message)
           broadcast_to_others(state,pre_prepare_message,prepare_state, commit_state)
+          send(sender, :ok)
+          primary(state, prepare_state, commit_state)
         end
       send(sender, :ok)
       primary(state, prepare_state, commit_state)
+
       {sender, %PBFT.PrepareMessage{
         view: view_number,
         sequence_number: sequence_number,
@@ -278,7 +292,7 @@ defmodule PBFT do
           origin_length = length(prepare_state[sequence_number])
           prepare_state = Map.put(prepare_state, sequence_number, Enum.uniq([id] ++ prepare_state[sequence_number]))
           IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
-          if origin_length * 3 <= length(state.view) and length(prepare_state[sequence_number]) * 3 > length(state.view) do
+          if origin_length + 1 <= length(state.view) / 3 * 2 and length(prepare_state[sequence_number]) + 1 > length(state.view) / 3 * 2 do
             IO.puts("#{whoami()} is sending commit message for #{sequence_number}")
             commit_message = PBFT.CommitMessage.new(view_number, sequence_number, digest, whoami(), signature)
             broadcast_to_others(state,commit_message, prepare_state, commit_state)
@@ -306,6 +320,7 @@ defmodule PBFT do
             IO.puts("#{whoami()} has received #{length(commit_state[sequence_number])} commit messages for #{sequence_number}.")
             if origin_length * 3 <= length(state.view) and length(commit_state[sequence_number]) * 3 > length(state.view) do
               IO.puts("#{whoami()} is commiting message #{sequence_number}")
+              primary(local_commit(state, sequence_number), prepare_state, commit_state)
             end
             primary(state, prepare_state, commit_state)
           end
@@ -398,10 +413,15 @@ defmodule PBFT do
         message: message
         }
       } ->
-        IO.puts("#{whoami()} received Prepare message: [#{view_number}, #{sequence_number}, #{inspect(digest)}, #{inspect(signature)}, #{inspect(message)}].")
-        prepare_message=PBFT.PrepareMessage.new(view_number, sequence_number, digest, whoami(), signature)
-        broadcast_to_others(state,prepare_message, prepare_state, commit_state)
-        replica(state, prepare_state, commit_state)
+        IO.puts("#{whoami()} received Pre_Prepare message: [#{view_number}, #{sequence_number}, #{inspect(digest)}, #{inspect(signature)}, #{inspect(message)}].")
+        prepare_message = PBFT.PrepareMessage.new(view_number, sequence_number, digest, whoami(), signature)
+        if Map.has_key?(state.log, sequence_number) == false do
+          state = %{state | log: Map.put(state.log, sequence_number, message)} #maybe make a function for it
+          broadcast_to_others(state, prepare_message, prepare_state, commit_state)
+          replica(state, prepare_state, commit_state)
+        else
+          replica(state, prepare_state, commit_state)
+        end
         #prepare_message=PBFT.PrepareMessage.new(primary_view,sequence_number,digest,primary_signature,message)
 
       {sender, %PBFT.PrepareMessage{
@@ -421,7 +441,7 @@ defmodule PBFT do
           origin_length = length(prepare_state[sequence_number])
           prepare_state = Map.put(prepare_state, sequence_number, Enum.uniq([id] ++ prepare_state[sequence_number]))
           IO.puts("#{whoami()} has received #{length(prepare_state[sequence_number])} prepare messages for #{sequence_number}.")
-          if origin_length * 3 <= length(state.view) and length(prepare_state[sequence_number]) * 3 > length(state.view) do
+          if origin_length + 1 <= length(state.view) / 3 * 2 and length(prepare_state[sequence_number]) + 1 > length(state.view) / 3 * 2 do
             IO.puts("#{whoami()} is sending commit message for #{sequence_number}")
             commit_message = PBFT.CommitMessage.new(view_number, sequence_number, digest, whoami(), signature)
             broadcast_to_others(state,commit_message, prepare_state, commit_state)
@@ -447,8 +467,9 @@ defmodule PBFT do
           origin_length = length(commit_state[sequence_number])
           commit_state = Map.put(commit_state, sequence_number, Enum.uniq([id] ++ commit_state[sequence_number]))
           IO.puts("#{whoami()} has received #{length(commit_state[sequence_number])} commit messages for #{sequence_number}.")
-          if origin_length * 3 <= length(state.view) and length(commit_state[sequence_number]) * 3 > length(state.view) do
+          if origin_length + 1 <= length(state.view) and length(commit_state[sequence_number]) * 3 > length(state.view) do
             IO.puts("#{whoami()} is commiting message #{sequence_number}")
+            replica(local_commit(state, sequence_number), prepare_state, commit_state)
           end
           replica(state, prepare_state, commit_state)
         end
